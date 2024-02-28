@@ -1,0 +1,66 @@
+# Define default image for CI jobs if not overridden
+image: registry.gitlab.com/provisionesta/laravel-docker:8.2
+
+# Define cache variables and paths for all jobs
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - vendor/
+
+# Define CI job stages for pipeline
+stages:
+- test
+
+# Define extends script for all Laravel related jobs
+.laravel:
+  before_script:
+    - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
+  cache:
+    paths:
+      - vendor/
+  #variables:
+  #  VARIABLE_KEY: variable_value
+
+# Include the following GitLab CI templates
+# https://gitlab.com/gitlab-org/gitlab/-/tree/master/lib/gitlab/ci/templates/Jobs
+include:
+- template: Jobs/Code-Quality.gitlab-ci.yml
+- template: Jobs/Dependency-Scanning.gitlab-ci.yml
+- template: Jobs/SAST.gitlab-ci.yml
+- template: Jobs/Secret-Detection.gitlab-ci.yml
+
+# Code Syntax and Style Validation
+code_style:
+  stage: test
+  image: registry.gitlab.com/provisionesta/laravel-docker:8.2
+  allow_failure: true
+  cache: {}
+  script:
+    - phpcs --standard=PSR12 --extensions=php src
+
+# Code Quality Job
+code_quality:
+  stage: test
+  allow_failure: true
+  artifacts:
+    paths: [gl-code-quality-report.json]
+  rules:
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+
+# Static Analysis
+phpstan:
+  stage: test
+  extends: .laravel
+  allow_failure: true
+  script:
+    - php vendor/bin/phpstan analyse src/ --level=5 --memory-limit=2G
+
+# Unit Tests
+#unit_test:
+#  extends: .laravel
+#  stage: test
+#  script:
+#    - vendor/bin/phpunit --configuration phpunit.xml --coverage-text --colors=never
