@@ -1293,6 +1293,12 @@ The `event_type` key should be used for any categorization and log searches.
 
 ### Errors
 
+#### Authentication Scopes Missing Error
+
+```plain
+[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiToken::sendAuthRequest Error {"event_type":"google.api.auth.error","method":"Provisionesta\\Google\\ApiToken::sendAuthRequest","errors":["Client is unauthorized to retrieve access tokens using this method, or client not authorized for any of the scopes requested."]}
+```
+
 #### Missing Customer ID Error
 
 The most frequent error that you will see is mysteriously generic `400 Bad Request` that is caused by not adding `query_keys: ['customer']` to your request, especially with Google Workspace related API calls. This is particularly common with `get()` requests with a large number of results.
@@ -1324,4 +1330,10 @@ $groups = ApiClient::get(
 
 ```plain
 [YYYY-MM-DD HH:II:SS] local.WARNING: ApiClient::get Client Error {"event_type":"google.api.get.warning.not-found","method":"App\\Actions\\Connections\\Google\\ApiClient::get","event_ms":354,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users/user@example.com?customer=my_customer"}}
+```
+
+#### 429 Rate Limit Exception
+
+```plain
+[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiClient::get Client Error {"event_type":"google.api.get.critical.rate-limit","method":"Provisionesta\\Google\\ApiClient::get","errors":{"message":"Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:123456789012'."},"event_ms":129,"metadata":{"url":"https://sheets.googleapis.com/v4/spreadsheets/REDACTED"}}
 ```
