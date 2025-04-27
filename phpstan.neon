@@ -10,7 +10,8 @@ parameters:
     level: 9
 
     ignoreErrors:
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: src/Config/google-api-client.php
     excludePaths:
         - ./*/*/FileToBeExcluded.php
-
-    checkMissingIterableValueType: false

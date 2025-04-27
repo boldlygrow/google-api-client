@@ -811,7 +811,7 @@ class ApiClient
         }
 
         $count_records = null;
-        if ($response->status->ok && is_countable((array) $response->data)) {
+        if ($response->status->ok && is_countable($response->data)) {
             $count_records = count((array) $response->data);
         }
 
