@@ -1,17 +1,21 @@
 {
-    "name": "provisionesta/google-api-client",
+    "name": "boldlygrow/google-api-client",
     "description": "Google API Client for Laravel",
-    "homepage": "https://gitlab.com/provisionesta/google-api-client",
+    "homepage": "https://github.com/boldlygrow/google-api-client",
     "license": "MIT",
     "authors": [
         {
             "name": "Dillon Wheeler"
         },
         {
-            "name": "Jefferson Martin",
-            "email": "provisionesta@jeffersonmartin.com"
+            "name": "Jeff Martin",
+            "email": "jeff@boldlygrow.us"
         }
     ],
+    "replace": {
+        "glamstack/google-api-client": "self.version",
+        "provisionesta/google-api-client": "self.version"
+    },
     "require": {
         "php": "^8.2",
         "illuminate/config": "^11.0 || ^12.0 || ^13.0",
@@ -27,13 +31,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Provisionesta\\Google\\": "src/"
+            "BoldlyGrow\\Google\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Provisionesta\\Google\\GoogleApiServiceProvider"
+                "BoldlyGrow\\Google\\GoogleApiServiceProvider"
             ]
         }
     }
