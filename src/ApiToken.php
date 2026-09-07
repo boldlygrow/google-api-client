@@ -1,13 +1,13 @@
 <?php
 
-namespace Provisionesta\Google;
+namespace BoldlyGrow\Google;
 
+use BoldlyGrow\Google\Exceptions\AuthenticationException;
+use BoldlyGrow\Google\Exceptions\ConfigurationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Provisionesta\Audit\Log;
-use Provisionesta\Google\Exceptions\AuthenticationException;
-use Provisionesta\Google\Exceptions\ConfigurationException;
 
 /**
  * Google API Authentication Token Generator

@@ -21,7 +21,7 @@ The value of this API Client is that it handles the API request logging, respons
 ### Example Usage
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Create a group
 // https://developers.google.com/admin-sdk/directory/reference/rest/v1/groups/insert
@@ -146,7 +146,7 @@ $response = ApiClient::delete(
 
 We do not maintain a roadmap of feature requests, however we invite you to contribute and we will gladly review your merge requests.
 
-Please create an [issue](https://gitlab.com/provisionesta/google-api-client/-/issues) for bug reports.
+Please create an [issue](https://github.com/boldlygrow/google-api-client/issues) for bug reports.
 
 ### Contributing
 
@@ -154,14 +154,14 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) to learn more about how to contrib
 
 ### Maintainers
 
-| Name | GitLab Handle | Email |
+| Name | GitHub Handle | Email |
 |------|---------------|-------|
-| [Jeff Martin](https://www.linkedin.com/in/jeffersonmmartin/) | [@jeffersonmartin](https://gitlab.com/jeffersonmartin) | `provisionesta [at] jeffersonmartin [dot] com` |
+| [Jeff Martin](https://www.linkedin.com/in/jeffersonmmartin/) | [@jeffersonmartin](https://github.com/jeffersonmartin) | `jeff [at] boldlygrow [dot] us` |
 
 ### Contributor Credit
 
-- [Dillon Wheeler](https://gitlab.com/dillonwheeler)
-- [Jeff Martin](https://gitlab.com/jeffersonmartin)
+- Dillon Wheeler
+- Jeff Martin
 
 ## Installation
 
@@ -174,14 +174,14 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) to learn more about how to contrib
 
 ### Upgrade Guide
 
-See the [changelog](https://gitlab.com/provisionesta/google-api-client/-/blob/main/changelog/) for release notes.
+See the [changelog](https://github.com/boldlygrow/google-api-client/tree/main/changelog) for release notes.
 
 Still using `glamstack/*`? This package is a replacement for `glamstack/google-auth-sdk`, `glamstack/google-workspace-sdk`, and `glamstack/google-cloud-sdk`, however has been fully refactored and requires re-implementation for all previous usage.
 
 ### Add Composer Package
 
 ```plain
-composer require provisionesta/google-api-client:^4.0
+composer require boldlygrow/google-api-client:^5.0
 ```
 
 If you are contributing to this package, see [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on configuring a local composer package with symlinks.
@@ -426,7 +426,7 @@ The `key_string` parameter can be used for passing the JSON array as a string.
 
 ```php
 use App\Models\GoogleServiceAccount;
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 class MyClass
 {
@@ -467,7 +467,7 @@ You can make an API request to any of the resource endpoints in the [Google API 
 If you include the fully-qualified namespace at the top of of each class, you can use the class name inside the method where you are making an API call.
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 class MyClass
 {
@@ -488,7 +488,7 @@ class MyClass
 {
     public function getGroup($group_id)
     {
-        return \Provisionesta\Google\ApiClient::get(
+        return \BoldlyGrow\Google\ApiClient::get(
             url: 'https://admin.googleapis.com/admin/directory/v1/groups/' . $group_id,
             scope: 'https://www.googleapis.com/auth/admin.directory.group'
         )->data;
@@ -501,7 +501,7 @@ class MyClass
 We transitioned to using static methods in v4.0 and you do not need to instantiate the ApiClient class.
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 ApiClient::get(...);
 ApiClient::post(...);
@@ -519,7 +519,7 @@ It is recommended is to use named arguments.
 Learn more in the PHP documentation for [function arguments](https://www.php.net/manual/en/functions.arguments.php), [named parameters](https://php.watch/versions/8.0/named-parameters), and this helpful [blog article](https://stitcher.io/blog/php-8-named-arguments).
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Named Arguments
 ApiClient::get(
@@ -557,7 +557,7 @@ See [API Token Permissions and Scopes](#api-token-permissions-and-scopes) to lea
 #### GET Example Usage
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Get a list of records
 // https://developers.google.com/admin-sdk/directory/reference/rest/v1/groups/list
@@ -572,7 +572,7 @@ $groups = ApiClient::get(
 You can also use variables or database models to get data for constructing your endpoints. Some endpoints require an ID while others allow a human friendly alias (ex. resource name or email address).
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Get a specific record using a variable
 // https://developers.google.com/admin-sdk/directory/reference/rest/v1/groups/get
@@ -608,7 +608,7 @@ Many endpoints will require the `customer`, `domain`, and/or `subject_email` to 
 See the `getConnectionQueryParams()` method in `ApiClient.php` to learn more.
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 $group = ApiClient::post(
     url: 'https://admin.googleapis.com/admin/directory/v1/groups',
@@ -642,7 +642,7 @@ Since many Google endpoints require one of the `query_keys` and some use additio
 You can learn more about request data in the [Laravel HTTP Client documentation](https://laravel.com/docs/10.x/http-client#request-data).
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Create a group
 // https://developers.google.com/admin-sdk/directory/reference/rest/v1/groups/insert
@@ -686,7 +686,7 @@ You need to ensure that the ID of the record that you want to update is provided
 #### PATCH Example Usage
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Update a group (patch)
 // https://developers.google.com/admin-sdk/directory/reference/rest/v1/groups/patch
@@ -724,7 +724,7 @@ You need to ensure that the ID of the record that you want to update is provided
 #### PUT Example Usage
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Get a specific record using a variable
 // https://developers.google.com/admin-sdk/directory/reference/rest/v1/groups/get
@@ -793,7 +793,7 @@ Keep in mind that `delete()` methods will return different status codes dependin
 #### DELETE Example Usage
 
 ```php
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 // Delete a group
 // https://developers.google.com/admin-sdk/directory/reference/rest/v1/groups/delete
@@ -812,8 +812,8 @@ The examples above show basic inline usage that is suitable for most use cases. 
 ```php
 <?php
 
-use Provisionesta\Google\ApiClient;
-use Provisionesta\Google\Exceptions\NotFoundException;
+use BoldlyGrow\Google\ApiClient;
+use BoldlyGrow\Google\Exceptions\NotFoundException;
 
 class GoogleGroupService
 {
@@ -929,7 +929,7 @@ See the rate limit documentation for the specific service that you are calling f
 
 ## API Responses
 
-This API Client uses the Provisionesta standards for API response formatting.
+This API Client uses the BoldlyGrow standards for API response formatting.
 
 ```php
 // API Request
@@ -1016,7 +1016,7 @@ You can wrap an endpoint in a cache facade when making an API call. You can lear
 
 ```php
 use Illuminate\Support\Facades\Cache;
-use Provisionesta\Google\ApiClient;
+use BoldlyGrow\Google\ApiClient;
 
 $groups = Cache::remember('google_groups', now()->addHours(2), function () {
     return ApiClient::get(
@@ -1159,26 +1159,26 @@ An exception is thrown for any 4xx or 5xx responses. All responses are automatic
 
 | Code | Exception Class                                               |
 |------|---------------------------------------------------------------|
-| N/A  | `Provisionesta\Google\Exceptions\AuthenticationException`     |
-| N/A  | `Provisionesta\Google\Exceptions\ConfigurationException`      |
-| 400  | `Provisionesta\Google\Exceptions\BadRequestException`         |
-| 401  | `Provisionesta\Google\Exceptions\UnauthorizedException`       |
-| 403  | `Provisionesta\Google\Exceptions\ForbiddenException`          |
-| 404  | `Provisionesta\Google\Exceptions\NotFoundException`           |
-| 405  | `Provisionesta\Google\Exceptions\MethodNotAllowedException`   |
-| 409  | `Provisionesta\Google\Exceptions\ConflictException`           |
-| 412  | `Provisionesta\Google\Exceptions\PreconditionFailedException` |
-| 422  | `Provisionesta\Google\Exceptions\UnprocessableException`      |
-| 429  | `Provisionesta\Google\Exceptions\RateLimitException`          |
-| 500  | `Provisionesta\Google\Exceptions\ServerErrorException`        |
-| 503  | `Provisionesta\Google\Exceptions\ServiceUnavailableException` |
+| N/A  | `BoldlyGrow\Google\Exceptions\AuthenticationException`     |
+| N/A  | `BoldlyGrow\Google\Exceptions\ConfigurationException`      |
+| 400  | `BoldlyGrow\Google\Exceptions\BadRequestException`         |
+| 401  | `BoldlyGrow\Google\Exceptions\UnauthorizedException`       |
+| 403  | `BoldlyGrow\Google\Exceptions\ForbiddenException`          |
+| 404  | `BoldlyGrow\Google\Exceptions\NotFoundException`           |
+| 405  | `BoldlyGrow\Google\Exceptions\MethodNotAllowedException`   |
+| 409  | `BoldlyGrow\Google\Exceptions\ConflictException`           |
+| 412  | `BoldlyGrow\Google\Exceptions\PreconditionFailedException` |
+| 422  | `BoldlyGrow\Google\Exceptions\UnprocessableException`      |
+| 429  | `BoldlyGrow\Google\Exceptions\RateLimitException`          |
+| 500  | `BoldlyGrow\Google\Exceptions\ServerErrorException`        |
+| 503  | `BoldlyGrow\Google\Exceptions\ServiceUnavailableException` |
 
 ### Catching Exceptions
 
 You can catch any exceptions that you want to handle silently. Any uncaught exceptions will appear for users and cause 500 errors that will appear in your monitoring software.
 
 ```php
-use Provisionesta\Google\Exceptions\NotFoundException;
+use BoldlyGrow\Google\Exceptions\NotFoundException;
 
 try {
     $group_id = 'elite-engineers@example.com';
@@ -1204,7 +1204,7 @@ GOOGLE_API_EXCEPTIONS=false
 
 ## Log Examples
 
-This package uses the [provisionesta/audit](https://gitlab.com/provisionesta/audit) package for standardized logs.
+This package uses the [boldlygrow/audit-log](https://github.com/boldlygrow/audit-log) package for standardized logs.
 
 ### Event Types
 
@@ -1296,7 +1296,7 @@ The `event_type` key should be used for any categorization and log searches.
 #### Authentication Scopes Missing Error
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiToken::sendAuthRequest Error {"event_type":"google.api.auth.error","method":"Provisionesta\\Google\\ApiToken::sendAuthRequest","errors":["Client is unauthorized to retrieve access tokens using this method, or client not authorized for any of the scopes requested."]}
+[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiToken::sendAuthRequest Error {"event_type":"google.api.auth.error","method":"BoldlyGrow\\Google\\ApiToken::sendAuthRequest","errors":["Client is unauthorized to retrieve access tokens using this method, or client not authorized for any of the scopes requested."]}
 ```
 
 #### Missing Customer ID Error
@@ -1335,5 +1335,5 @@ $groups = ApiClient::get(
 #### 429 Rate Limit Exception
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiClient::get Client Error {"event_type":"google.api.get.critical.rate-limit","method":"Provisionesta\\Google\\ApiClient::get","errors":{"message":"Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:123456789012'."},"event_ms":129,"metadata":{"url":"https://sheets.googleapis.com/v4/spreadsheets/REDACTED"}}
+[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiClient::get Client Error {"event_type":"google.api.get.critical.rate-limit","method":"BoldlyGrow\\Google\\ApiClient::get","errors":{"message":"Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:123456789012'."},"event_ms":129,"metadata":{"url":"https://sheets.googleapis.com/v4/spreadsheets/REDACTED"}}
 ```

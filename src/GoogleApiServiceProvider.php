@@ -1,6 +1,6 @@
 <?php
 
-namespace Provisionesta\Google;
+namespace BoldlyGrow\Google;
 
 use Illuminate\Support\ServiceProvider;
 

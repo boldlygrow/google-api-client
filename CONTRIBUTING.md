@@ -34,7 +34,7 @@ mkdir -p laravel${SDK_LARAVEL_VERSION}-pkg-test/packages/provisionesta
 ln -s ~/Code/google-api-client ~/Code/laravel${SDK_LARAVEL_VERSION}-pkg-test/packages/provisionesta/google-api-client
 # Custom repository location configuration
 cd ~/Code/laravel${SDK_LARAVEL_VERSION}-pkg-test
-sed -i '.bak' -e 's/seeders\/"/&,\n            "Provisionesta\\\\Google\\\\": "packages\/provisionesta\/google-api-client\/src"/g' composer.json
+sed -i '.bak' -e 's/seeders\/"/&,\n            "BoldlyGrow\\\\Google\\\\": "packages\/provisionesta\/google-api-client\/src"/g' composer.json
 composer config repositories.google-api-client '{"type": "path", "url": "packages/provisionesta/google-api-client"}' --file composer.json
 composer require provisionesta/google-api-client:dev-main
 php artisan vendor:publish --tag=google-api-client
@@ -49,7 +49,7 @@ ce ~/Code/my-project-name
 
 mkdir -p packages/provisionesta
 ln -s ~/Code/provisionesta/google-api-client packages/provisionesta/google-api-client
-sed -i '.bak' -e 's/seeders\/"/&,\n            "Provisionesta\\\\Google\\\\": "packages\/provisionesta\/google-api-client\/src"/g' composer.json
+sed -i '.bak' -e 's/seeders\/"/&,\n            "BoldlyGrow\\\\Google\\\\": "packages\/provisionesta\/google-api-client\/src"/g' composer.json
 composer config repositories.google-api-client '{"type": "path", "url": "packages/provisionesta/google-api-client"}' --file composer.json
 composer require provisionesta/google-api-client:dev-main
 php artisan vendor:publish --tag=google-api-client
@@ -87,7 +87,7 @@ Update the `composer.json` file in your testing application (not the package) to
 "autoload": {
     "psr-4": {
         "App\\": "app/",
-        "Provisionesta\\Google\\": "packages/provisionesta/google-api-client/src",
+        "BoldlyGrow\\Google\\": "packages/provisionesta/google-api-client/src",
     }
 },
 ```

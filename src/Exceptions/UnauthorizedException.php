@@ -1,6 +1,6 @@
 <?php
 
-namespace Provisionesta\Google\Exceptions;
+namespace BoldlyGrow\Google\Exceptions;
 
 use Exception;
 
