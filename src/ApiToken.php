@@ -2,12 +2,12 @@
 
 namespace BoldlyGrow\Google;
 
+use BoldlyGrow\AuditLog\AuditLog;
 use BoldlyGrow\Google\Exceptions\AuthenticationException;
 use BoldlyGrow\Google\Exceptions\ConfigurationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
-use Provisionesta\Audit\Log;
 
 /**
  * Google API Authentication Token Generator
@@ -126,7 +126,7 @@ class ApiToken
         );
 
         if ($validator->fails()) {
-            Log::create(
+            AuditLog::create(
                 errors: $validator->errors()->all(),
                 event_type: 'google.api.validate.error.array',
                 level: 'critical',
@@ -168,7 +168,7 @@ class ApiToken
         if (empty($json_key)) {
             $reason = 'The JSON key contents are empty.';
 
-            Log::create(
+            AuditLog::create(
                 errors: [$reason],
                 event_type: 'google.api.validate.error.empty',
                 level: 'critical',
@@ -288,7 +288,7 @@ class ApiToken
                 $reason = 'Unknown response in the sendAuthRequest method.';
             }
 
-            Log::create(
+            AuditLog::create(
                 errors: [$reason],
                 event_type: 'google.api.auth.error',
                 level: 'critical',
@@ -306,7 +306,7 @@ class ApiToken
         if (! property_exists($response->object(), 'access_token')) {
             $reason = 'The access_token was not returned in the sendAuthRequest method response.';
 
-            Log::create(
+            AuditLog::create(
                 errors: [$reason],
                 event_type: 'google.api.auth.error',
                 level: 'critical',
@@ -321,7 +321,7 @@ class ApiToken
             ]));
         }
 
-        Log::create(
+        AuditLog::create(
             event_type: 'google.api.auth.success',
             level: 'debug',
             message: 'Success',

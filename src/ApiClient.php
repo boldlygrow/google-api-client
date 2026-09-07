@@ -2,6 +2,7 @@
 
 namespace BoldlyGrow\Google;
 
+use BoldlyGrow\AuditLog\AuditLog;
 use BoldlyGrow\Google\Exceptions\BadRequestException;
 use BoldlyGrow\Google\Exceptions\ConfigurationException;
 use BoldlyGrow\Google\Exceptions\ConflictException;
@@ -17,7 +18,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Provisionesta\Audit\Log;
 
 /**
  * Google API Client for OAUTH Client and GCP Service Account JSON Keys
@@ -114,7 +114,7 @@ class ApiClient
         );
 
         if (property_exists($request->object(), 'nextPageToken')) {
-            Log::create(
+            AuditLog::create(
                 event_type: 'google.api.get.process.pagination.started',
                 level: 'debug',
                 message: 'Paginated Results Process Started',
@@ -136,7 +136,7 @@ class ApiClient
             $count_records = is_countable($response->data) ? count((array) $response->data) : null;
             $duration_ms_per_record = $count_records ? (int) ($event_ms->diffInMilliseconds() / $count_records) : null;
 
-            Log::create(
+            AuditLog::create(
                 count_records: $count_records,
                 duration_ms: $event_ms,
                 duration_ms_per_record: $duration_ms_per_record,
@@ -767,7 +767,7 @@ class ApiClient
             $event_ms_per_record = (int) ($event_ms->diffInMilliseconds() / $count_records);
         }
 
-        Log::create(
+        AuditLog::create(
             count_records: $count_records,
             errors: $errors,
             event_ms: $event_ms,
@@ -873,7 +873,7 @@ class ApiClient
         $method,
         $url
     ): object {
-        Log::create(
+        AuditLog::create(
             errors: [
                 'code' => $exception->getCode(),
                 'message' => $exception->getMessage(),
