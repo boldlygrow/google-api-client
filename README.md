@@ -167,10 +167,10 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) to learn more about how to contrib
 
 ### Requirements
 
-| Requirement | Version                          |
-|-------------|----------------------------------|
-| PHP         | `^8.0`                           |
-| Laravel     | `^8.0`, `^9.0`, `^10.0`, `^11.0` |
+| Requirement | Version                     |
+|-------------|-----------------------------|
+| PHP         | `^8.2`                      |
+| Laravel     | `^11.0`, `^12.0`, `^13.0`   |
 
 ### Upgrade Guide
 
