@@ -5,7 +5,6 @@ namespace Provisionesta\Google;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Provisionesta\Audit\Log;
 use Provisionesta\Google\Exceptions\AuthenticationException;
 use Provisionesta\Google\Exceptions\ConfigurationException;
@@ -34,21 +33,24 @@ class ApiToken
     // Standard parameters for building JWT request with Google OAuth Server.
     // They are put here for easy changing if necessary
     public const AUTH_BASE_URL = 'https://oauth2.googleapis.com/token';
+
     public const AUTH_ALGORITHM = 'RS256';
+
     public const AUTH_TYPE = 'JWT';
+
     public const AUTH_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:jwt-bearer';
+
     public const ENCRYPT_METHOD = 'sha256';
 
     /**
      * Create a new Google API Token using JWT Claim or returned cached token if the signature matches with the same
      * email, scopes, and private key.
      *
-     * @param string $scope
-     *      One of the scopes required by the API endpoint that your API key has been authorized to use.
-     *
-     * @param array $connection (optional)
-     *      An array with API connection variables. See README for schema.
-     *      If not set, `config('google-api-client')` uses the GOOGLE_API_* variables from your .env file.
+     * @param  string  $scope       One of the scopes required by the API endpoint that your API key has
+     *                              been authorized to use.
+     * @param  array   $connection  (optional) An array with API connection variables. See README for
+     *                              schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
+     *                              variables from your .env file.
      *
      * @throws AuthenticationException
      */
@@ -77,7 +79,7 @@ class ApiToken
         $cache_checksum_token = 'google-api-token-' . md5(json_encode([
             'scope' => $scope,
             'subject_email' => $subject_email,
-            'private_key_id' => $json_key_contents->private_key_id
+            'private_key_id' => $json_key_contents->private_key_id,
         ]));
 
         $encrypted_token = Cache::remember(
@@ -98,14 +100,13 @@ class ApiToken
     /**
      * Validate that array keys exist in the connection array
      *
-     * @param array $connection
-     *      An array with API connection variables. See README for schema.
+     * @param  array  $connection  An array with API connection variables. See README for schema.
      *
      * @throws ConfigurationException
      */
     private static function validateConnectionArray(array $connection): array
     {
-        $connection_config = !empty($connection) ? $connection : config('google-api-client');
+        $connection_config = ! empty($connection) ? $connection : config('google-api-client');
 
         $validator = Validator::make(
             data: $connection_config,
@@ -114,7 +115,7 @@ class ApiToken
                 'domain' => ['nullable', 'string'],
                 'key_path' => [
                     'string',
-                    'nullable'
+                    'nullable',
                 ],
                 'key_string' => [
                     'string',
@@ -136,7 +137,7 @@ class ApiToken
 
             throw new ConfigurationException(implode('', [
                 'Google API configuration validation error.',
-                '(Reason) ' . $validator->messages()->first()
+                '(Reason) ' . $validator->messages()->first(),
             ]));
         }
 
@@ -146,8 +147,7 @@ class ApiToken
     /**
      * Get Google API JSON key contents from `key_string` or `key_path` connection configuration.
      *
-     * @param array $connection
-     *      An array with API connection variables. See README for schema.
+     * @param  array  $connection  An array with API connection variables. See README for schema.
      *
      * @throws ConfigurationException
      */
@@ -179,7 +179,7 @@ class ApiToken
 
             throw new ConfigurationException(implode(' ', [
                 'Google API validation error.',
-                '(Reason) ' . $reason
+                '(Reason) ' . $reason,
             ]));
         }
 
@@ -204,8 +204,7 @@ class ApiToken
      *
      * @link https://stackoverflow.com/a/65893524
      *
-     * @param string $input
-     *      The input string to encode
+     * @param  string  $input  The input string to encode
      */
     private static function base64UrlEncode(string $input): string
     {
@@ -217,27 +216,23 @@ class ApiToken
      *
      * @link https://developers.google.com/identity/protocols/oauth2/service-account#:~:text=Forming%20the%20JWT%20claim%20set
      *
-     * @param string $client_email
-     *      The `client_email` from the Google JSON key
-     *
-     * @param string $scope
-     *      One of the scopes required by the API endpoint that your API key has been authorized to use.
-     *
-     * @param string $subject_email
-     *      The `subject_email` to use for authentication
+     * @param  string  $client_email   The `client_email` from the Google JSON key
+     * @param  string  $scope          One of the scopes required by the API endpoint that your API key has
+     *                                 been authorized to use.
+     * @param  string  $subject_email  The `subject_email` to use for authentication
      */
     private static function createJwtClaim(
         string $client_email,
         string $scope,
         string $subject_email
     ): string {
-        return self::base64UrlEncode((string)json_encode([
+        return self::base64UrlEncode((string) json_encode([
             'iss' => $client_email,
             'scope' => $scope,
             'aud' => self::AUTH_BASE_URL,
             'exp' => time() + 3600,
             'iat' => time(),
-            'sub' => $subject_email
+            'sub' => $subject_email,
         ]));
     }
 
@@ -245,19 +240,12 @@ class ApiToken
      * Create a OpenSSL signature using JWT Header and Claim and the private_key from the Google JSON key
      *
      * @link https://developers.google.com/identity/protocols/oauth2/service-account#:~:text=Computing%20the-,signature,-JSON%20Web%20Signature
-     *
      * @link https://datatracker.ietf.org/doc/html/rfc7515
-     *
      * @link https://www.php.net/manual/en/function.openssl-pkey-get-private.php
      *
-     * @param string $jwt_header
-     *      The JWT Header string required for Google OAuth2 authentication
-     *
-     * @param string $jwt_claim
-     *      The JWT Claim string required for Google OAuth2 authentication
-     *
-     * @param string $private_key
-     *      The Google JSON key `private_key` value
+     * @param  string  $jwt_header   The JWT Header string required for Google OAuth2 authentication
+     * @param  string  $jwt_claim    The JWT Claim string required for Google OAuth2 authentication
+     * @param  string  $private_key  The Google JSON key `private_key` value
      */
     private static function createSignature(
         string $jwt_header,
@@ -281,8 +269,7 @@ class ApiToken
      *
      * @link https://developers.google.com/identity/protocols/oauth2/service-account#:~:text=Making%20the%20access%20token%20request
      *
-     * @param string $jwt
-     *      The JWT to use for authentication
+     * @param  string  $jwt  The JWT to use for authentication
      */
     private static function sendAuthRequest(string $jwt): string
     {
@@ -290,11 +277,11 @@ class ApiToken
             url: self::AUTH_BASE_URL,
             data: [
                 'grant_type' => self::AUTH_GRANT_TYPE,
-                'assertion' => $jwt
+                'assertion' => $jwt,
             ]
         );
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             if (property_exists($response->object(), 'error')) {
                 $reason = $response->object()->error_description;
             } else {
@@ -312,11 +299,11 @@ class ApiToken
 
             throw new AuthenticationException(implode(' ', [
                 'Google API token authentication error.',
-                '(Reason) ' . $reason
+                '(Reason) ' . $reason,
             ]));
         }
 
-        if (!property_exists($response->object(), 'access_token')) {
+        if (! property_exists($response->object(), 'access_token')) {
             $reason = 'The access_token was not returned in the sendAuthRequest method response.';
 
             Log::create(
@@ -330,7 +317,7 @@ class ApiToken
 
             throw new AuthenticationException(implode(' ', [
                 'Google API token authentication error.',
-                '(Reason) ' . $reason
+                '(Reason) ' . $reason,
             ]));
         }
 
