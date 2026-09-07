@@ -28,17 +28,34 @@
     "require-dev": {
         "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
         "larastan/larastan": "^2.9 || ^3.0",
+        "laravel/pint": "^1.29",
+        "pestphp/pest": "^4.7",
+        "pestphp/pest-plugin-laravel": "^4.1"
     },
     "autoload": {
         "psr-4": {
             "BoldlyGrow\\Google\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "BoldlyGrow\\Google\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "test:coverage": "pest --coverage"
+    },
     "extra": {
         "laravel": {
             "providers": [
                 "BoldlyGrow\\Google\\GoogleApiServiceProvider"
             ]
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
         }
     }
 }
