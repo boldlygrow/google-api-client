@@ -27,7 +27,7 @@ class GoogleApiServiceProvider extends ServiceProvider
      */
     protected function bootRoutes()
     {
-        //$this->loadRoutesFrom(__DIR__.'/Routes/console.php');
+        // $this->loadRoutesFrom(__DIR__.'/Routes/console.php');
     }
 
     /**
@@ -52,7 +52,7 @@ class GoogleApiServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes(
                 [
-                    __DIR__ . '/Config/google-api-client.php' => config_path('google-api-client.php')
+                    __DIR__ . '/Config/google-api-client.php' => config_path('google-api-client.php'),
                 ],
                 'google-api-client'
             );
