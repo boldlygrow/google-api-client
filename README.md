@@ -6,7 +6,7 @@
 
 The Google API Client is an open source [Composer](https://getcomposer.org/) package for use in Laravel applications for connecting to Google for provisioning and deprovisioning of resources, particularly in Google Workspace (Admin SDK) and Google Cloud.
 
-This is maintained by the open source community and is not maintained by any company. Please use at your own risk and create merge requests for any bugs that you encounter.
+Please use at your own risk and create merge requests for any bugs that you encounter.
 
 ### Problem Statement
 
@@ -254,7 +254,7 @@ Each API request checks for the existence of the key in the following order and 
 4. The `GOOGLE_APPLICATION_CREDENTIALS` environment variable is set either on you or your configuration-as-code on your server, or using the `gcloud auth application-default login` command.
 5. (Untested) Metadata server credentials for GCP instance, cluster, container, CloudRun, etc.
 
-If no valid JSON key can be found, an log message will be created and `Provisionesta\Google\Exceptions\ConfigurationException` will be thrown with the `google.api.validate.error.empty` event type.
+If no valid JSON key can be found, an log message will be created and `BoldlyGrow\Google\Exceptions\ConfigurationException` will be thrown with the `google.api.validate.error.empty` event type.
 
 ### Security Best Practices
 

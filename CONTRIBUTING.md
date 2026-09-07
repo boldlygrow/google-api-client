@@ -12,9 +12,9 @@ We do not maintain a roadmap of feature requests, however we invite you to contr
 
 ## Code Contributions
 
-We have transitioned from issue-first to MR-first development. We will create an issue for any deferred work, however you can start contributing by creating a new `feature/*` or `hotfix/*` branch and create a merge request.
+We have transitioned from issue-first to PR-first development. We will create an issue for any deferred work, however you can start contributing by creating a new `feature/*` or `hotfix/*` branch and create a merge request.
 
-Before assigning your MR to a maintainer, please review the pipeline CI job outputs for any errors and fix anything that appears.
+Before assigning your PR to a maintainer, please review the pipeline CI job outputs for any errors and fix anything that appears.
 
 All merge requests can be assigned to one or all of the maintainers at your discretion. It is helpful to add a comment with any context that the maintainer/reviewer should know or be on the look out for.
 
