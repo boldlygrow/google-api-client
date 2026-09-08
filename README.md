@@ -1199,6 +1199,38 @@ An exception is thrown for any 4xx or 5xx responses. All responses are automatic
 | 500  | `BoldlyGrow\Google\Exceptions\ServerErrorException`        |
 | 503  | `BoldlyGrow\Google\Exceptions\ServiceUnavailableException` |
 
+### Exception Messages
+
+Every exception message contains the HTTP method, status code, and full URL of the request, followed by the reason that the Google API returned for the failure.
+
+```php
+POST 400 https://admin.googleapis.com/admin/directory/v1/users (Reason) INVALID_ARGUMENT Invalid Input: bad_email (Details) invalid
+```
+
+The top level `message` is often generic. The per-field reasons from `error.details[].fieldViolations[]` and the machine readable `error.errors[].reason` are appended so that the actionable part of the response is not lost.
+
+```php
+// {"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT","details":[{"fieldViolations":[{"field":"parent","description":"Invalid parent"}]}]}}
+POST 400 https://cloudidentity.googleapis.com/v1/groups (Reason) INVALID_ARGUMENT Request contains an invalid argument. (Details) parent: Invalid parent
+```
+
+The OAuth 2.0 token endpoints return `error` and `error_description` instead of a nested `error` object. Both formats are handled.
+
+```php
+// {"error":"invalid_grant","error_description":"Invalid grant: account not found"}
+POST 400 https://oauth2.googleapis.com/token (Reason) invalid_grant Invalid grant: account not found
+```
+
+If the response body uses none of these keys, the body itself is appended (truncated to 1000 characters) so that the reason is never discarded. If the response body is empty, the message contains only the method, status code, and URL.
+
+Percent encoded URLs are hard to read, so a decoded copy of the URL is appended when it differs from the URL that was requested. The encoded URL is always shown first and is the one to reproduce the request with, because decoding a `%2F` produces a URL that the API routes to a different endpoint.
+
+```php
+GET 400 https://admin.googleapis.com/admin/directory/v1/users?query=email%3Auser%40example.com (Reason) INVALID_ARGUMENT Invalid Input: query (Decoded) https://admin.googleapis.com/admin/directory/v1/users?query=email:user@example.com
+```
+
+The same reason is stored in the `errors` array of the audit log entry for any unsuccessful request.
+
 ### Catching Exceptions
 
 You can catch any exceptions that you want to handle silently. Any uncaught exceptions will appear for users and cause 500 errors that will appear in your monitoring software.
