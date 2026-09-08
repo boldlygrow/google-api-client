@@ -12,6 +12,7 @@ use BoldlyGrow\Google\Exceptions\NotFoundException;
 use BoldlyGrow\Google\Exceptions\PreconditionFailedException;
 use BoldlyGrow\Google\Exceptions\RateLimitException;
 use BoldlyGrow\Google\Exceptions\ServerErrorException;
+use BoldlyGrow\Google\Exceptions\ServiceUnavailableException;
 use BoldlyGrow\Google\Exceptions\UnauthorizedException;
 use BoldlyGrow\Google\Exceptions\UnprocessableException;
 use Carbon\Carbon;
@@ -743,8 +744,8 @@ class ApiClient
         ];
 
         $errors = [];
-        if (isset(collect($response->data)->first()->message)) {
-            $errors['message'] = collect($response->data)->first()->message;
+        if ($response->status->failed && ($error_message = self::parseErrorMessage($response)) !== null) {
+            $errors['message'] = $error_message;
         }
 
         if ($response->status->successful) {
@@ -908,9 +909,156 @@ class ApiClient
     }
 
     /**
+     * Parse the reason for an unsuccessful API response into a human readable string
+     *
+     * The Google APIs and the OAuth 2.0 token endpoints use different keys for error messages, and
+     * the top level `message` is often generic, so the reason for a failed request is discarded when
+     * only checking a single key.
+     *
+     * - `error.status` and `error.message` are returned by the Google APIs.
+     *   Ex. `{"error":{"code":400,"message":"Invalid Input: bad_email","status":"INVALID_ARGUMENT"}}`
+     * - `error.details[].fieldViolations[]` names the specific request field that was rejected. The
+     *   `message` for these responses is generic (ex. `Request contains an invalid argument.`), so
+     *   the violations are the only actionable part of the response.
+     * - `error.errors[].reason` is the machine readable reason returned by the Workspace APIs.
+     *   Ex. `{"error":{"errors":[{"domain":"global","reason":"duplicate"}]}}`
+     * - `error` and `error_description` are returned by the OAuth 2.0 token endpoints.
+     *   Ex. `{"error":"invalid_grant","error_description":"Invalid grant: account not found"}`
+     *
+     * @link https://cloud.google.com/apis/design/errors
+     *
+     * @param  object  $response  The HTTP response formatted with $this->parseApiResponse()
+     *
+     * @return ?string The reason for the error or null if the response body is empty
+     *                 Ex. `INVALID_ARGUMENT Invalid Input: bad_email`
+     *                 Ex. `INVALID_ARGUMENT Request contains an invalid argument. (Details) parent: Invalid parent`
+     */
+    private static function parseErrorMessage(object $response): ?string
+    {
+        $data = $response->data ?? null;
+
+        // An empty body (ex. a 204 No Content or a non-JSON body that could not be decoded) has no reason
+        if (blank($data) || ((is_object($data) || is_array($data)) && blank((array) $data))) {
+            return null;
+        }
+
+        // self::parseApiResponse() unwraps a response body that has a single key, so the `error`
+        // object of a failed request is moved to the first element of the response data. The `error`
+        // key is checked first for a body that was not unwrapped, then the first element is used.
+        $error = data_get($data, 'error');
+        $first = collect($data)->first();
+
+        if (! blank($error) && ! is_scalar($error)) {
+            $data = $error;
+        } elseif (! blank($first) && ! is_scalar($first)) {
+            $data = $first;
+        }
+
+        $reason = [];
+
+        // `status` is the canonical error code (ex. `INVALID_ARGUMENT`). `error` is its equivalent
+        // on the OAuth 2.0 token endpoints (ex. `invalid_grant`).
+        foreach (['status', 'error'] as $key) {
+            $value = data_get($data, $key);
+
+            if (! blank($value) && is_scalar($value)) {
+                $reason[] = trim((string) $value);
+                break;
+            }
+        }
+
+        // `message` is returned by the Google APIs. `error_description` is returned by the OAuth 2.0
+        // token endpoints.
+        foreach (['message', 'error_description'] as $key) {
+            $value = data_get($data, $key);
+
+            if (! blank($value)) {
+                $reason[] = self::flattenErrorMessage($value);
+                break;
+            }
+        }
+
+        $details = self::parseErrorDetails($data);
+
+        if ($details !== null) {
+            $reason[] = '(Details) ' . $details;
+        }
+
+        if (! empty($reason)) {
+            return implode(' ', $reason);
+        }
+
+        // The response body does not use a known error key (ex. an HTML error page from a proxy or
+        // an undocumented response), so the entire body is returned to avoid discarding the reason.
+        return Str::limit(is_scalar($data) ? (string) $data : (string) json_encode($data), 1000);
+    }
+
+    /**
+     * Parse the per-field reasons from an error object
+     *
+     * @param  mixed  $error  The `error` object from an error response body
+     *
+     * @return ?string Ex. `parent: Invalid parent`
+     *                 Ex. `duplicate`
+     */
+    private static function parseErrorDetails(mixed $error): ?string
+    {
+        $violations = collect((array) data_get($error, 'details'))
+            ->flatMap(fn ($detail) => (array) data_get($detail, 'fieldViolations'))
+            ->map(fn ($violation) => trim(implode(': ', array_filter([
+                data_get($violation, 'field'),
+                data_get($violation, 'description'),
+            ]))))
+            ->filter()
+            ->all();
+
+        if (! empty($violations)) {
+            return implode(', ', $violations);
+        }
+
+        // The `message` of an `errors[]` entry is usually identical to the top level message, so it
+        // is only appended when it adds something that is not already in the exception message.
+        $message = data_get($error, 'message');
+
+        $errors = collect((array) data_get($error, 'errors'))
+            ->map(fn ($item) => trim(implode(': ', array_filter([
+                data_get($item, 'reason'),
+                data_get($item, 'message') !== $message ? data_get($item, 'message') : null,
+            ]))))
+            ->filter()
+            ->all();
+
+        return ! empty($errors) ? implode(', ', $errors) : null;
+    }
+
+    /**
+     * Flatten a nested error message into a single line string
+     *
+     * @param  mixed  $value  A string, array, or object from an error response body
+     *
+     * @return string Ex. `name: has already been taken, path: can't be blank`
+     */
+    private static function flattenErrorMessage(mixed $value): string
+    {
+        if (is_scalar($value)) {
+            return trim((string) $value);
+        }
+
+        $messages = [];
+
+        foreach ((array) $value as $key => $item) {
+            $item = self::flattenErrorMessage($item);
+
+            $messages[] = is_string($key) ? $key . ': ' . $item : $item;
+        }
+
+        return implode(', ', $messages);
+    }
+
+    /**
      * Throw an exception for a 4xx or 5xx response for an API call
      *
-     * This method checks whether the .env variable or config value for `OKTA_API_EXCEPTIONS=true`
+     * This method checks whether the .env variable or config value for `GOOGLE_API_EXCEPTIONS=true`
      *
      * @param  string  $method    The lowercase name of the method that calls this function (ex. `get`)
      * @param  string  $url       The URL of the API call including the concatenated base URL and URI
@@ -924,6 +1072,7 @@ class ApiClient
      * @throws PreconditionFailedException
      * @throws RateLimitException
      * @throws ServerErrorException
+     * @throws ServiceUnavailableException
      * @throws UnauthorizedException
      * @throws UnprocessableException
      */
@@ -933,18 +1082,21 @@ class ApiClient
         object $response
     ): void {
         if (config('google-api-client.exceptions') == true) {
-            if (isset(collect($response->data)->first()->message)) {
-                $context = trim(json_encode(collect($response->data)->first()->message), '"');
-            } else {
-                $context = null;
-            }
+            $error_message = self::parseErrorMessage($response);
 
-            $message = trim(implode(' ', [
+            // The URL is kept exactly as it was requested so that it can be reproduced verbatim. A
+            // percent encoded path or query string is hard to read, so a decoded copy is appended
+            // when it differs. The decoded URL is for display only and is never used on its own,
+            // because decoding a `%2F` produces a URL that the API routes to a different endpoint.
+            $decoded_url = urldecode($url);
+
+            $message = implode(' ', array_filter([
                 Str::upper($method),
                 $response->status->code,
                 $url,
-                $context,
-            ]), ' ');
+                $error_message ? '(Reason) ' . $error_message : null,
+                $decoded_url !== $url ? '(Decoded) ' . $decoded_url : null,
+            ]));
 
             switch ($response->status->code) {
                 case 400:
@@ -972,7 +1124,9 @@ class ApiClient
                 case 429:
                     throw new RateLimitException($message);
                 case 500:
-                    throw new ServerErrorException($response->json);
+                    throw new ServerErrorException($message);
+                case 503:
+                    throw new ServiceUnavailableException($message);
             }
         }
     }
