@@ -226,19 +226,31 @@ You can specify the full operating system path to the JSON key file. For securit
 
 You should not be storing and using JSON key files unless you cannot use the [gcloud CLI](#local-development-environment-with-gcloud-cli) or [attached service account](#gcp-infrastructure-with-attached-service-account-iam-authentication) approaches. If your architecture supports it, you should store your variables in CI/CD variables or a secrets vault (ex. Ansible Vault, AWS Parameter Store, GCP Secrets Manager, HashiCorp Vault, etc.) instead of locally on the server.
 
+#### `GOOGLE_API_KEY_STRING`
+
+The contents of a service account JSON key as a string. This is intended for applications that load keys from a database or a secrets manager at runtime, and takes precedence over `GOOGLE_API_KEY_PATH`. The value must be the JSON itself and must not be base64 encoded.
+
+Prefer `GOOGLE_API_KEY_PATH`, the [gcloud CLI](#local-development-environment-with-gcloud-cli), or an [attached service account](#gcp-infrastructure-with-attached-service-account-iam-authentication) where your architecture allows it.
+
 #### `GOOGLE_API_SUBJECT_EMAIL`
 
 The email of the address to run the Google Workspace API as. This is not related to permissions or granting access, it just needs to be a valid user email that has permissions for the same action in the Admin UI.
+
+This requires a service account JSON key with domain-wide delegation. It cannot be used with `gcloud` application default credentials or an attached service account.
 
 ## API Credentials
 
 API authentication with Google Cloud, Google Workspace and other Google APIs is complex and can be confusing. These instructions are designed to get you started as quickly and securely as possible. See the [Google API authentication documentation](https://cloud.google.com/docs/authentication) to learn more.
 
-This package uses the `GOOGLE_APPLICATION_CREDENTIALS` environment variable, a JSON key file, or a JSON string passed into a [connection array](#connection-arrays) with a database value at runtime, and will generate bearer tokens using OAuth2 JWT automatically that is used for calling an API endpoint.
+This package generates the bearer token used for calling an API endpoint automatically. Three credential types are supported.
 
-**Known Limitation:** Due to architectural and technical discovery challenges, you might be able to use GCP instance-level attached service accounts, however we have not been able to sufficiently test this.
+| Type | Source | Best for | Supports `subject_email` |
+|------|--------|----------|--------------------------|
+| `service_account` | A [GCP project service account](https://cloud.google.com/iam/docs/service-account-overview) JSON key, referenced by `GOOGLE_API_KEY_PATH`, `GOOGLE_API_KEY_STRING`, or a [connection array](#connection-arrays) | Production, CI/CD, and all Google Workspace API calls | Yes |
+| `authorized_user` | Your own credentials written by `gcloud auth application-default login` | Local development | No |
+| `metadata_server` | The service account attached to the Google Cloud resource the application runs on | Applications running on Google Cloud | No |
 
-In most cases, this will either be a [GCP Project Service account](https://cloud.google.com/iam/docs/service-account-overview) or [Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc).
+Only a service account can perform domain-wide delegation, so any request that sets `subject_email` (the Google Workspace Admin SDK, for example) requires a service account key. The other two types will throw a `ConfigurationException` explaining this rather than failing at Google.
 
 If you have the `GOOGLE_APPLICATION_CREDENTIALS` environment variable specified, leave the `GOOGLE_API_KEY_FILE` variable commented out. If you have downloaded the JSON key from GCP, see instructions for using the [GOOGLE_API_KEY_PATH](#google_api_key_path) variable.
 
@@ -248,13 +260,14 @@ If you have your connection secrets stored in your database or secrets manager, 
 
 Each API request checks for the existence of the key in the following order and will use the first value that it finds.
 
-1. The `key_string` key exists in an array passed to the `connection` parameter for a GET, POST, PATCH, PUT, or DELETE request.
+1. The `key_string` key exists in an array passed to the `connection` parameter for a GET, POST, PATCH, PUT, or DELETE request, or is set as the `GOOGLE_API_KEY_STRING` environment variable.
 2. The `key_path` key exists in an array passed to the `connection` parameter of a request.
 3. The `key_path` key is set in the `.env` file or as a `GOOGLE_API_KEY_PATH` environment variable.
-4. The `GOOGLE_APPLICATION_CREDENTIALS` environment variable is set either on you or your configuration-as-code on your server, or using the `gcloud auth application-default login` command.
-5. (Untested) Metadata server credentials for GCP instance, cluster, container, CloudRun, etc.
+4. The `GOOGLE_APPLICATION_CREDENTIALS` environment variable is set by you or by your configuration-as-code. This may be **either** the path to a JSON key file (the convention used by Google's own SDKs) **or** the JSON key contents.
+5. The application default credentials file written by `gcloud auth application-default login`, which is `$HOME/.config/gcloud/application_default_credentials.json` on macOS and Linux and `%APPDATA%/gcloud/application_default_credentials.json` on Windows. Set `CLOUDSDK_CONFIG` to look somewhere else.
+6. The service account attached to the Google Cloud resource this application is running on, read from the metadata server.
 
-If no valid JSON key can be found, an log message will be created and `BoldlyGrow\Google\Exceptions\ConfigurationException` will be thrown with the `google.api.validate.error.empty` event type.
+If no credentials can be found, a log message will be created and `BoldlyGrow\Google\Exceptions\ConfigurationException` will be thrown with the `google.api.validate.error.empty` event type. The exception message lists every location that was checked.
 
 ### Security Best Practices
 
@@ -272,7 +285,7 @@ Do not add your API key to any `config/*.php` files to avoid committing to your 
 
 All JSON API keys should be usually be saved as a `.json` file in a secure location in the filesystem and referenced by the [GOOGLE_API_KEY_PATH](#google_api_key_path) `.env` variable.
 
-You can also use the `GOOGLE_APPLICATION_CREDENTIALS` environment variable which is used if no values are set in the `.env` file.
+You can also use the `GOOGLE_APPLICATION_CREDENTIALS` environment variable which is used if no values are set in the `.env` file. This accepts either the path to a JSON key file or the JSON key contents. It must not be base64 encoded.
 
 See the Google documentation for additional best practices:
 
@@ -294,21 +307,34 @@ There are additional advanced use cases with secrets managers that are not cover
 
 1. **(Prerequisite)** [Install](https://cloud.google.com/sdk/docs/install) and [initialize](https://cloud.google.com/sdk/docs/initializing) the `gcloud` SDK on your computer.
 2. Run `gcloud auth login` to [authenticate](https://cloud.google.com/sdk/docs/authorizing) with your Google Cloud organization.
-3. Run `gcloud auth application-default login` to [automatically configure](https://cloud.google.com/sdk/docs/authorizing#adc) the `GOOGLE_APPLICATION_CREDENTIALS` environment variable on your machine.
-4. You can see the key that was configured in `~/.config/gcloud/application_default_credentials.json`. Do **not** copy this to your Laravel repository or another location.
-    > The format of this key looks slightly different than a JSON key that you would download, however Google can parse it anyway during the bearer token generation behind the scenes.
+3. Run `gcloud auth application-default login` to [set up application default credentials](https://cloud.google.com/sdk/docs/authorizing#adc).
+4. You can see the credentials that were written in `~/.config/gcloud/application_default_credentials.json`. Do **not** copy this to your Laravel repository or another location.
+    > This command writes a credentials file. It does **not** set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable, and you should not point that variable at this file. The package reads the file from its well-known location on its own.
+    > These are `authorized_user` credentials containing a refresh token rather than a service account key, so they are exchanged for an access token instead of being used to sign a JWT.
 5. You're all set! You do not need to touch or move any JSON keys or update the `.env` variables. All API calls use your email address's assigned roles and permissions.
-    > Keep in mind that the API client automatically uses the `GOOGLE_APPLICATION_CREDENTIALS` environment variable if no `GOOGLE_API_KEY_PATH` or `GOOGLE_API_KEY_STRING` value is set.
+    > Keep in mind that the credentials file is only used if no `GOOGLE_API_KEY_STRING`, `GOOGLE_API_KEY_PATH`, or `GOOGLE_APPLICATION_CREDENTIALS` value is set.
+
+**Scopes.** A refresh token can only be narrowed to the scopes you consented to at login. By default `gcloud auth application-default login` grants `cloud-platform`, `sqlservice.login`, `userinfo.email`, and `openid`, which covers most Google Cloud APIs. To use another scope, include every scope your application needs in one command.
+
+```bash
+gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/devstorage.read_only
+```
+
+Requesting a scope you have not consented to throws a `ConfigurationException` naming the scope and the command to fix it. Google Workspace Admin SDK scopes cannot be used this way at all, because they also require domain-wide delegation.
+
+**Reauthentication.** Google Cloud organizations can require periodic reauthentication. When the credentials expire, the package throws an `AuthenticationException` telling you to run `gcloud auth application-default login` again.
 
 See the [Google documentation](https://cloud.google.com/docs/authentication/provide-credentials-adc#local-dev) if you need additional assistance.
 
 #### GCP Infrastructure with Attached Service Account IAM Authentication
 
-> **Known Limitation:** Due to architectural and technical discovery challenges, you might be able to use GCP instance-level attached service accounts, however we have not been able to sufficiently test this. Please fall back to [GCP Project Service Account Key](#gcp-project-service-account-key) and setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable if needed.
-
 If your application is running on Google Cloud infrastructure or managed service, you can use IAM authentication at the machine/resource level instead of the application level. Many Google Cloud services (ex. Compute Engine virtual machines, Google Kubernetes Engine clusters, Cloud Run deployments, AppEngine, etc.) let you attach a service account that can be used to provide credentials for accessing Google Cloud APIs. If ADC does not find credentials it can use in either the `GOOGLE_APPLICATION_CREDENTIALS` environment variable or the well-known location for Google Account credentials, it uses the metadata server to get credentials for the service where the code is running.
 
-Using the credentials from the attached service account is the **preferred method if your Laravel application is running on Google Cloud**.
+Using the credentials from the attached service account is the **preferred method if your Laravel application is running on Google Cloud**. No configuration is required. If no other credentials are found, the package requests an access token from the metadata server for the scope of each request, and no credentials are ever stored on disk.
+
+The metadata server is only reachable from inside Google Cloud, so the check is skipped after the first attempt on machines where it does not resolve. Set `GCE_METADATA_HOST` to override the host if you use a proxy or a private Google Access setup.
+
+The attached service account must be granted the scope and the IAM roles that your API calls require.
 
 See the Google documentation and best practices to learn more.
 

@@ -15,7 +15,7 @@ use BoldlyGrow\Google\Exceptions\ServerErrorException;
 use BoldlyGrow\Google\Exceptions\ServiceUnavailableException;
 use BoldlyGrow\Google\Exceptions\UnauthorizedException;
 use BoldlyGrow\Google\Exceptions\UnprocessableException;
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -713,17 +713,17 @@ class ApiClient
      *
      * This method is called from other methods and create log entry and throw exception
      *
-     * @param  string  $method    The upstream method that invoked this method for traceability
-     *                            Ex. __METHOD__
-     * @param  string  $url       The URL of the API call including the concatenated base URL and URI
-     * @param  object  $response  The raw unformatted HTTP client response
-     * @param  Carbon  $event_ms  A process start timestamp used to calculate duration in ms for logs
+     * @param  string           $method    The upstream method that invoked this method for traceability
+     *                                     Ex. __METHOD__
+     * @param  string           $url       The URL of the API call including the concatenated base URL and URI
+     * @param  object           $response  The raw unformatted HTTP client response
+     * @param  CarbonInterface  $event_ms  A process start timestamp used to calculate duration in ms for logs
      */
     private static function logResponse(
         string $method,
         string $url,
         object $response,
-        ?Carbon $event_ms = null
+        ?CarbonInterface $event_ms = null
     ): void {
         $log_type = [
             200 => ['event_type' => 'success', 'level' => 'debug'],

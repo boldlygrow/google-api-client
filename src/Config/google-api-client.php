@@ -45,6 +45,15 @@ return [
     'key_path' => env('GOOGLE_API_KEY_PATH'),
 
     /**
+     * The service account JSON key contents as a string
+     *
+     * This is intended for applications that load keys from a database or a
+     * secrets manager at runtime. Prefer `key_path`, the gcloud CLI, or an
+     * attached service account. Takes precedence over `key_path`.
+     */
+    'key_string' => env('GOOGLE_API_KEY_STRING'),
+
+    /**
      * The email address to impersonate when running the Google Workspace API
      *
      * This is not related to granting access; it just needs to be a valid user
