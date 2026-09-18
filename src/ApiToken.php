@@ -64,7 +64,7 @@ class ApiToken
     // deliberately short since it is attempted on developer machines where it will never resolve.
     public const METADATA_HOST = 'metadata.google.internal';
 
-    public const METADATA_TOKEN_URI = '/computeMetadata/v1/instance/service-account/default/token';
+    public const METADATA_TOKEN_URI = '/computeMetadata/v1/instance/service-accounts/default/token';
 
     public const METADATA_PROBE_TIMEOUT = 1;
 
