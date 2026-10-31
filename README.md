@@ -1,7 +1,5 @@
 # Google API Client
 
-[[_TOC_]]
-
 ## Overview
 
 The Google API Client is an open source [Composer](https://getcomposer.org/) package for use in Laravel applications for connecting to Google for provisioning and deprovisioning of resources, particularly in Google Workspace (Admin SDK) and Google Cloud.
