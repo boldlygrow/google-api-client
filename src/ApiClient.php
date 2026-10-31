@@ -36,6 +36,34 @@ use Illuminate\Support\Str;
  * All authentication is performed in the `ApiToken` class that will generate a short-lived bearer token.
  *
  * @link https://developers.google.com/apis-explorer
+ *
+ * ApiResponse is the object returned by get(), post(), patch(), put(), and delete(). See parseApiResponse() for an
+ * example. Static analysis in your application can use it with `@phpstan-import-type ApiResponse from ApiClient`.
+ *
+ * @phpstan-type ApiResponseStatus object{
+ *     code: int,
+ *     ok: bool,
+ *     successful: bool,
+ *     failed: bool,
+ *     serverError: bool,
+ *     clientError: bool,
+ * }
+ * @phpstan-type ApiResponseHeaders array<string, string|array<int, string>>
+ * @phpstan-type ApiResponse object{
+ *     data: mixed,
+ *     headers: ApiResponseHeaders,
+ *     status: ApiResponseStatus,
+ * }
+ * @phpstan-type ApiPaginatedResponse object{
+ *     data: object,
+ *     status: ApiResponseStatus,
+ * }
+ * @phpstan-type ApiErrorResponse object{
+ *     data: null,
+ *     headers: array{},
+ *     error: object{code: int, message: string, method: string, url: string},
+ *     status: ApiResponseStatus,
+ * }
  */
 class ApiClient
 {
@@ -54,19 +82,19 @@ class ApiClient
      * );
      * ```
      *
-     * @param  string  $url         The full URL of the API endpoint
-     * @param  string  $scope       One of the scopes required by the API endpoint that your API key has
-     *                              been authorized to use.
-     * @param  array   $query_data  (optional) Array of query data to apply to request
-     * @param  array   $query_keys  (optional) Array of connection configuration keys (customer,
-     *                              domain, subject_email) that should be included with API requests for specific
-     *                              endpoints (ex. Google Workspace Directory API) to merge into the query_data.
-     * @param  array   $connection  (optional) An array with API connection variables. See README for
-     *                              schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
-     *                              variables from your .env file.
+     * @param  string                $url         The full URL of the API endpoint
+     * @param  string                $scope       One of the scopes required by the API endpoint that your API key has
+     *                                            been authorized to use.
+     * @param  array<string, mixed>  $query_data  (optional) Array of query data to apply to request
+     * @param  array<int, string>    $query_keys  (optional) Array of connection configuration keys (customer,
+     *                                            domain, subject_email) that should be included with API requests for specific
+     *                                            endpoints (ex. Google Workspace Directory API) to merge into the query_data.
+     * @param  array<string, mixed>  $connection  (optional) An array with API connection variables. See README for
+     *                                            schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
+     *                                            variables from your .env file.
      *
-     * @return object See parseApiResponse() method. The content and schema of the object and json
-     *                arrays can be found in the REST API documentation for the specific endpoint.
+     * @return ApiResponse See parseApiResponse() method. The content and schema of the object and json
+     *                     arrays can be found in the REST API documentation for the specific endpoint.
      */
     public static function get(
         string $url,
@@ -137,10 +165,14 @@ class ApiClient
 
             // A page that failed is only returned when exceptions are disabled. Its status replaces the status of the
             // first page so that a caller that checks the `status` of the response knows the results are incomplete.
-            $response->data = $paginated_response->data;
-            $response->status = $paginated_response->status;
+            $response = (object) [
+                'data' => $paginated_response->data,
+                'headers' => $response->headers,
+                'status' => $paginated_response->status,
+            ];
 
-            $count_records = is_countable($response->data) ? count((array) $response->data) : null;
+            // The records are an object, which is not countable, so they are cast to an array to count them.
+            $count_records = count((array) $response->data);
             $duration_ms_per_record = $count_records ? (int) ($event_ms->diffInMilliseconds() / $count_records) : null;
 
             AuditLog::create(
@@ -179,17 +211,19 @@ class ApiClient
      *     );
      *  ```
      *
-     * @param  string  $url         The full URL of the API endpoint
-     * @param  string  $scope       One of the scopes required by the API endpoint that your API key has
-     *                              been authorized to use.
-     * @param  array   $form_data   (optional) Array of form data that will be converted to JSON
-     * @param  array   $query_data  (optional) Array of query data to apply to request
-     * @param  array   $query_keys  (optional) Array of connection configuration keys (customer,
-     *                              domain, subject_email) that should be included with API requests for specific
-     *                              endpoints (ex. Google Workspace Directory API) to merge into the query_data.
-     * @param  array   $connection  (optional) An array with API connection variables. See README for
-     *                              schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
-     *                              variables from your .env file.
+     * @param  string                $url         The full URL of the API endpoint
+     * @param  string                $scope       One of the scopes required by the API endpoint that your API key has
+     *                                            been authorized to use.
+     * @param  array<mixed>          $form_data   (optional) Array of form data that will be converted to JSON
+     * @param  array<string, mixed>  $query_data  (optional) Array of query data to apply to request
+     * @param  array<int, string>    $query_keys  (optional) Array of connection configuration keys (customer,
+     *                                            domain, subject_email) that should be included with API requests for specific
+     *                                            endpoints (ex. Google Workspace Directory API) to merge into the query_data.
+     * @param  array<string, mixed>  $connection  (optional) An array with API connection variables. See README for
+     *                                            schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
+     *                                            variables from your .env file.
+     *
+     * @return ApiResponse See parseApiResponse() method.
      */
     public static function post(
         string $url,
@@ -260,17 +294,19 @@ class ApiClient
      * );
      * ```
      *
-     * @param  string  $url         The full URL of the API endpoint
-     * @param  string  $scope       One of the scopes required by the API endpoint that your API key has
-     *                              been authorized to use.
-     * @param  array   $form_data   (optional) Array of form data that will be converted to JSON
-     * @param  array   $query_data  (optional) Array of query data to apply to request
-     * @param  array   $query_keys  (optional) Array of connection configuration keys (customer,
-     *                              domain, subject_email) that should be included with API requests for specific
-     *                              endpoints (ex. Google Workspace Directory API) to merge into the query_data.
-     * @param  array   $connection  (optional) An array with API connection variables. See README for
-     *                              schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
-     *                              variables from your .env file.
+     * @param  string                $url         The full URL of the API endpoint
+     * @param  string                $scope       One of the scopes required by the API endpoint that your API key has
+     *                                            been authorized to use.
+     * @param  array<mixed>          $form_data   (optional) Array of form data that will be converted to JSON
+     * @param  array<string, mixed>  $query_data  (optional) Array of query data to apply to request
+     * @param  array<int, string>    $query_keys  (optional) Array of connection configuration keys (customer,
+     *                                            domain, subject_email) that should be included with API requests for specific
+     *                                            endpoints (ex. Google Workspace Directory API) to merge into the query_data.
+     * @param  array<string, mixed>  $connection  (optional) An array with API connection variables. See README for
+     *                                            schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
+     *                                            variables from your .env file.
+     *
+     * @return ApiResponse See parseApiResponse() method.
      */
     public static function patch(
         string $url,
@@ -341,17 +377,19 @@ class ApiClient
      * );
      * ```
      *
-     * @param  string  $url         The full URL of the API endpoint
-     * @param  string  $scope       One of the scopes required by the API endpoint that your API key has
-     *                              been authorized to use.
-     * @param  array   $form_data   (optional) Array of form data that will be converted to JSON
-     * @param  array   $query_data  (optional) Array of query data to apply to request
-     * @param  array   $query_keys  (optional) Array of connection configuration keys (customer,
-     *                              domain, subject_email) that should be included with API requests for specific
-     *                              endpoints (ex. Google Workspace Directory API) to merge into the query_data.
-     * @param  array   $connection  (optional) An array with API connection variables. See README for
-     *                              schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
-     *                              variables from your .env file.
+     * @param  string                $url         The full URL of the API endpoint
+     * @param  string                $scope       One of the scopes required by the API endpoint that your API key has
+     *                                            been authorized to use.
+     * @param  array<mixed>          $form_data   (optional) Array of form data that will be converted to JSON
+     * @param  array<string, mixed>  $query_data  (optional) Array of query data to apply to request
+     * @param  array<int, string>    $query_keys  (optional) Array of connection configuration keys (customer,
+     *                                            domain, subject_email) that should be included with API requests for specific
+     *                                            endpoints (ex. Google Workspace Directory API) to merge into the query_data.
+     * @param  array<string, mixed>  $connection  (optional) An array with API connection variables. See README for
+     *                                            schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
+     *                                            variables from your .env file.
+     *
+     * @return ApiResponse See parseApiResponse() method.
      */
     public static function put(
         string $url,
@@ -419,17 +457,19 @@ class ApiClient
      * );
      * ```
      *
-     * @param  string  $url         The full URL of the API endpoint
-     * @param  string  $scope       One of the scopes required by the API endpoint that your API key has
-     *                              been authorized to use.
-     * @param  array   $form_data   (optional) Array of form data that will be converted to JSON
-     * @param  array   $query_data  (optional) Array of query data to apply to request
-     * @param  array   $query_keys  (optional) Array of connection configuration keys (customer,
-     *                              domain, subject_email) that should be included with API requests for specific
-     *                              endpoints (ex. Google Workspace Directory API) to merge into the query_data.
-     * @param  array   $connection  (optional) An array with API connection variables. See README for
-     *                              schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
-     *                              variables from your .env file.
+     * @param  string                $url         The full URL of the API endpoint
+     * @param  string                $scope       One of the scopes required by the API endpoint that your API key has
+     *                                            been authorized to use.
+     * @param  array<mixed>          $form_data   (optional) Array of form data that will be converted to JSON
+     * @param  array<string, mixed>  $query_data  (optional) Array of query data to apply to request
+     * @param  array<int, string>    $query_keys  (optional) Array of connection configuration keys (customer,
+     *                                            domain, subject_email) that should be included with API requests for specific
+     *                                            endpoints (ex. Google Workspace Directory API) to merge into the query_data.
+     * @param  array<string, mixed>  $connection  (optional) An array with API connection variables. See README for
+     *                                            schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
+     *                                            variables from your .env file.
+     *
+     * @return ApiResponse See parseApiResponse() method.
      */
     public static function delete(
         string $url,
@@ -489,62 +529,62 @@ class ApiClient
      * nested array for each value, and converts the single array values into strings and converts to an object for
      * easier and consistent accessibility with the parseApiResponse format.
      *
-     * @param  array  $header_response
-     *                                  [
-     *                                  "ETag" => [
-     *                                  ""nMRgLWac8h8NyH7Uk5VvV4DiNp4uxXg5gNUd9YhyaJE/dky_PFyA8Zq0WLn1WqUCn_A8oes""
-     *                                  ]
-     *                                  "Content-Type" => [
-     *                                  "application/json; charset=UTF-8"
-     *                                  ]
-     *                                  "Vary" => [
-     *                                  "Origin"
-     *                                  "X-Origin"
-     *                                  "Referer"
-     *                                  ]
-     *                                  "Date" => [
-     *                                  "Mon, 24 Jan 2022 15:39:46 GMT"
-     *                                  ]
-     *                                  "Server" => [
-     *                                  "ESF"
-     *                                  ]
-     *                                  "Content-Length" => [
-     *                                  "355675"
-     *                                  ]
-     *                                  "X-XSS-Protection" => [
-     *                                  "0"
-     *                                  ]
-     *                                  "X-Frame-Options" => [
-     *                                  "SAMEORIGIN"
-     *                                  ]
-     *                                  "X-Content-Type-Options" => [
-     *                                  "nosniff"
-     *                                  ]
-     *                                  "Alt-Svc" => [
-     *                                  (truncated)
-     *                                  ]
-     *                                  ]
+     * @param  array<string, array<int, string>>  $header_response
+     *                                                              [
+     *                                                              "ETag" => [
+     *                                                              ""nMRgLWac8h8NyH7Uk5VvV4DiNp4uxXg5gNUd9YhyaJE/dky_PFyA8Zq0WLn1WqUCn_A8oes""
+     *                                                              ]
+     *                                                              "Content-Type" => [
+     *                                                              "application/json; charset=UTF-8"
+     *                                                              ]
+     *                                                              "Vary" => [
+     *                                                              "Origin"
+     *                                                              "X-Origin"
+     *                                                              "Referer"
+     *                                                              ]
+     *                                                              "Date" => [
+     *                                                              "Mon, 24 Jan 2022 15:39:46 GMT"
+     *                                                              ]
+     *                                                              "Server" => [
+     *                                                              "ESF"
+     *                                                              ]
+     *                                                              "Content-Length" => [
+     *                                                              "355675"
+     *                                                              ]
+     *                                                              "X-XSS-Protection" => [
+     *                                                              "0"
+     *                                                              ]
+     *                                                              "X-Frame-Options" => [
+     *                                                              "SAMEORIGIN"
+     *                                                              ]
+     *                                                              "X-Content-Type-Options" => [
+     *                                                              "nosniff"
+     *                                                              ]
+     *                                                              "Alt-Svc" => [
+     *                                                              (truncated)
+     *                                                              ]
+     *                                                              ]
      *
-     * @return array
-     *               [
-     *               "ETag" => "nMRgLWac8h8NyH7Uk5VvV4DiNp4uxXg5gNUd9YhyaJE/dky_PFyA8Zq0WLn1WqUCn_A8oes",
-     *               "Content-Type" => "application/json; charset=UTF-8",
-     *               "Vary" => "Origin X-Origin Referer",
-     *               "Date" => "Mon, 24 Jan 2022 15:39:46 GMT",
-     *               "Server" => "ESF",
-     *               "Content-Length" => "355675",
-     *               "X-XSS-Protection" => "0",
-     *               "X-Frame-Options" => "SAMEORIGIN",
-     *               "X-Content-Type-Options" => "nosniff",
-     *               "Alt-Svc" => (truncated)
-     *               ]
+     * @return ApiResponseHeaders
+     *                            [
+     *                            "ETag" => "nMRgLWac8h8NyH7Uk5VvV4DiNp4uxXg5gNUd9YhyaJE/dky_PFyA8Zq0WLn1WqUCn_A8oes",
+     *                            "Content-Type" => "application/json; charset=UTF-8",
+     *                            "Vary" => "Origin X-Origin Referer",
+     *                            "Date" => "Mon, 24 Jan 2022 15:39:46 GMT",
+     *                            "Server" => "ESF",
+     *                            "Content-Length" => "355675",
+     *                            "X-XSS-Protection" => "0",
+     *                            "X-Frame-Options" => "SAMEORIGIN",
+     *                            "X-Content-Type-Options" => "nosniff",
+     *                            "Alt-Svc" => (truncated)
+     *                            ]
      */
     protected static function convertHeadersToArray(array $header_response): array
     {
         $headers = [];
 
         foreach ($header_response as $header_key => $header_value) {
-            if (is_countable($header_value) && count($header_value) > 1) {
+            if (count($header_value) > 1) {
                 // If array has multiple keys, leave as array
                 $headers[$header_key] = $header_value;
             } else {
@@ -559,18 +599,18 @@ class ApiClient
     /**
      * Helper function used to get Google API results that require pagination.
      *
-     * @param  array   $connection    An array with API connection variables. This is passed from the
-     *                                get() method.
-     * @param  string  $url           The full URL of the API endpoint
-     *                                https://admin.googleapis.com/admin/directory/v1/groups/a1b2c3d4e5
-     * @param  string  $scope         One of the scopes required by the API endpoint that your API key has
-     *                                been authorized to use.
-     * @param  array   $query_params  Array of query params that were calculated in get() method
-     * @param  array   $records       Array of records from first page of results from the get() method
+     * @param  array<string, mixed>  $connection    An array with API connection variables. This is passed from the
+     *                                              get() method.
+     * @param  string                $url           The full URL of the API endpoint
+     *                                              https://admin.googleapis.com/admin/directory/v1/groups/a1b2c3d4e5
+     * @param  string                $scope         One of the scopes required by the API endpoint that your API key has
+     *                                              been authorized to use.
+     * @param  array<string, mixed>  $query_params  Array of query params that were calculated in get() method
+     * @param  array<mixed>          $records       Array of records from first page of results from the get() method
      *
-     * @return object The records from every page combined and cast as an object in `data`, and the `status` of the
-     *                last page that was requested. If a page fails while exceptions are disabled, pagination stops
-     *                and the status of the failed page is returned with the records from the pages before it.
+     * @return ApiPaginatedResponse The records from every page combined and cast as an object in `data`, and the `status` of the
+     *                              last page that was requested. If a page fails while exceptions are disabled, pagination stops
+     *                              and the status of the failed page is returned with the records from the pages before it.
      */
     protected static function getPaginatedResults(
         array $connection,
@@ -641,89 +681,90 @@ class ApiClient
      *
      * @link https://laravel.com/docs/10.x/http-client#making-requests
      *
-     * @param  object  $response  Response object from API results
+     * @param  Response  $response  Response object from API results
      *
-     * @return object Custom response returned for consistency
-     *                ```php
-     *                {
-     *                +"data": {
-     *                +"kind": "admin#directory#user"
-     *                +"id": "114522752583947996869"
-     *                +"etag": (truncated)
-     *                +"primaryEmail": "klibby@example.com"
-     *                +"name": {
-     *                +"givenName": "Kate"
-     *                +"familyName": "Libby"
-     *                +"fullName": "Kate Libby"
-     *                }
-     *                +"isAdmin": true
-     *                +"isDelegatedAdmin": false
-     *                +"lastLoginTime": "2022-01-21T17:44:13.000Z"
-     *                +"creationTime": "2021-12-08T13:15:43.000Z"
-     *                +"agreedToTerms": true
-     *                +"suspended": false
-     *                +"archived": false
-     *                +"changePasswordAtNextLogin": false
-     *                +"ipWhitelisted": false
-     *                +"emails": array:3 [
-     *                0 => {
-     *                +"address": "klibby@example.com"
-     *                +"type": "work"
-     *                }
-     *                1 => {
-     *                +"address": "klibby@example-test.com"
-     *                +"primary": true
-     *                }
-     *                2 => {
-     *                +"address": "klibby@example.com.test-google-a.com"
-     *                }
-     *                ]
-     *                +"phones": array:1 [
-     *                0 => {
-     *                +"value": "5555555555"
-     *                +"type": "work"
-     *                }
-     *                ]
-     *                +"languages": array:1 [
-     *                0 => {
-     *                +"languageCode": "en"
-     *                +"preference": "preferred"
-     *                }
-     *                ]
-     *                +"nonEditableAliases": array:1 [
-     *                0 => "klibby@example.com.test-google-a.com"
-     *                ]
-     *                +"customerId": "C000nnnnn"
-     *                +"orgUnitPath": "/"
-     *                +"isMailboxSetup": true
-     *                +"isEnrolledIn2Sv": false
-     *                +"isEnforcedIn2Sv": false
-     *                +"includeInGlobalAddressList": true
-     *                },
-     *                +"headers" => [
-     *                "ETag" => (truncated),
-     *                "Content-Type" => "application/json; charset=UTF-8",
-     *                "Vary" => "Origin X-Origin Referer",
-     *                "Date" => "Mon, 24 Jan 2022 17:25:15 GMT",
-     *                "Server" => "ESF",
-     *                "Content-Length" => "1259",
-     *                "X-XSS-Protection" => "0",
-     *                "X-Frame-Options" => "SAMEORIGIN",
-     *                "X-Content-Type-Options" => "nosniff",
-     *                "Alt-Svc" => (truncated)
-     *                ],
-     *                +"status": {#1269
-     *                +"code": 200
-     *                +"ok": true
-     *                +"successful": true
-     *                +"failed": false
-     *                +"serverError": false
-     *                +"clientError": false
-     *                }
+     * @return ApiResponse Custom response returned for consistency
+     *                     ```php
+     *                     {
+     *                     +"data": {
+     *                     +"kind": "admin#directory#user"
+     *                     +"id": "114522752583947996869"
+     *                     +"etag": (truncated)
+     *                     +"primaryEmail": "klibby@example.com"
+     *                     +"name": {
+     *                     +"givenName": "Kate"
+     *                     +"familyName": "Libby"
+     *                     +"fullName": "Kate Libby"
+     *                     }
+     *                     +"isAdmin": true
+     *                     +"isDelegatedAdmin": false
+     *                     +"lastLoginTime": "2022-01-21T17:44:13.000Z"
+     *                     +"creationTime": "2021-12-08T13:15:43.000Z"
+     *                     +"agreedToTerms": true
+     *                     +"suspended": false
+     *                     +"archived": false
+     *                     +"changePasswordAtNextLogin": false
+     *                     +"ipWhitelisted": false
+     *                     +"emails": array:3 [
+     *                     0 => {
+     *                     +"address": "klibby@example.com"
+     *                     +"type": "work"
+     *                     }
+     *                     1 => {
+     *                     +"address": "klibby@example-test.com"
+     *                     +"primary": true
+     *                     }
+     *                     2 => {
+     *                     +"address": "klibby@example.com.test-google-a.com"
+     *                     }
+     *                     ]
+     *                     +"phones": array:1 [
+     *                     0 => {
+     *                     +"value": "5555555555"
+     *                     +"type": "work"
+     *                     }
+     *                     ]
+     *                     +"languages": array:1 [
+     *                     0 => {
+     *                     +"languageCode": "en"
+     *                     +"preference": "preferred"
+     *                     }
+     *                     ]
+     *                     +"nonEditableAliases": array:1 [
+     *                     0 => "klibby@example.com.test-google-a.com"
+     *                     ]
+     *                     +"customerId": "C000nnnnn"
+     *                     +"orgUnitPath": "/"
+     *                     +"isMailboxSetup": true
+     *                     +"isEnrolledIn2Sv": false
+     *                     +"isEnforcedIn2Sv": false
+     *                     +"includeInGlobalAddressList": true
+     *                     },
+     *                     +"headers" => [
+     *                     "ETag" => (truncated),
+     *                     "Content-Type" => "application/json; charset=UTF-8",
+     *                     "Vary" => "Origin X-Origin Referer",
+     *                     "Date" => "Mon, 24 Jan 2022 17:25:15 GMT",
+     *                     "Server" => "ESF",
+     *                     "Content-Length" => "1259",
+     *                     "X-XSS-Protection" => "0",
+     *                     "X-Frame-Options" => "SAMEORIGIN",
+     *                     "X-Content-Type-Options" => "nosniff",
+     *                     "Alt-Svc" => (truncated)
+     *                     ],
+     *                     +"status": {#1269
+     *                     +"code": 200
+     *                     +"ok": true
+     *                     +"successful": true
+     *                     +"failed": false
+     *                     +"serverError": false
+     *                     +"clientError": false
+     *                     }
      */
     public static function parseApiResponse(object $response): object
     {
-        $response_data = collect($response->object())->forget('etag')->forget('kind')->forget('nextPageToken');
+        $body = $response->object();
+        $response_data = collect($body === null ? [] : (array) $body)->forget('etag')->forget('kind')->forget('nextPageToken');
 
         return (object) [
             'data' => (object) collect($response_data->count() == 1 ? $response_data->flatten(1) : $response_data)
@@ -753,7 +794,7 @@ class ApiClient
      * @param  string           $method    The upstream method that invoked this method for traceability
      *                                     Ex. __METHOD__
      * @param  string           $url       The URL of the API call including the concatenated base URL and URI
-     * @param  object           $response  The raw unformatted HTTP client response
+     * @param  ApiResponse      $response  The HTTP response formatted with parseApiResponse()
      * @param  CarbonInterface  $event_ms  A process start timestamp used to calculate duration in ms for logs
      */
     private static function logResponse(
@@ -850,6 +891,8 @@ class ApiClient
 
     /**
      * Generate an array of request headers for the API request
+     *
+     * @return array<string, string>
      */
     private static function getRequestHeaders(): array
     {
@@ -864,12 +907,16 @@ class ApiClient
     /**
      * Add connection config array values to the request data included with all API requests
      *
-     * @param  array  $connection  (optional) An array with API connection variables. See README for
-     *                             schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
-     *                             variables from your .env file.
-     * @param  array  $query_keys  (optional) Array of connection configuration keys (customer,
-     *                             domain, subject_email) that should be included with API requests for specific
-     *                             endpoints (ex. Google Workspace Directory API) to merge into the query_data.
+     * @param  array<string, mixed>  $connection  (optional) An array with API connection variables. See README for
+     *                                            schema. If not set, `config('google-api-client')` uses the GOOGLE_API_*
+     *                                            variables from your .env file.
+     * @param  array<int, string>    $query_keys  (optional) Array of connection configuration keys (customer,
+     *                                            domain, subject_email) that should be included with API requests for specific
+     *                                            endpoints (ex. Google Workspace Directory API) to merge into the query_data.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws ConfigurationException
      */
     private static function getConnectionQueryParams(
         array $connection = [],
@@ -899,24 +946,24 @@ class ApiClient
      *                                       traceability Ex. __METHOD__
      * @param  string            $url        HTTP Request URL
      *
-     * @return object
-     *                {
-     *                +"data": null
-     *                +"headers": []
-     *                +"error": {
-     *                +"code": "<string>"
-     *                +"message": "<string>"
-     *                +"method": "<string>"
-     *                +"url": "<string>"
-     *                }
-     *                +"status": {
-     *                +"code": 400
-     *                +"ok": false
-     *                +"successful": false
-     *                +"failed": true
-     *                +"serverError": false
-     *                +"clientError": true
-     *                }
+     * @return ApiErrorResponse
+     *                          {
+     *                          +"data": null
+     *                          +"headers": []
+     *                          +"error": {
+     *                          +"code": "<string>"
+     *                          +"message": "<string>"
+     *                          +"method": "<string>"
+     *                          +"url": "<string>"
+     *                          }
+     *                          +"status": {
+     *                          +"code": 400
+     *                          +"ok": false
+     *                          +"successful": false
+     *                          +"failed": true
+     *                          +"serverError": false
+     *                          +"clientError": true
+     *                          }
      */
     public static function handleException(
         RequestException $exception,
@@ -980,7 +1027,7 @@ class ApiClient
      *
      * @link https://cloud.google.com/apis/design/errors
      *
-     * @param  object  $response  The HTTP response formatted with $this->parseApiResponse()
+     * @param  ApiResponse  $response  The HTTP response formatted with $this->parseApiResponse()
      *
      * @return ?string The reason for the error or null if the response body is empty
      *                 Ex. `INVALID_ARGUMENT Invalid Input: bad_email`
@@ -999,7 +1046,7 @@ class ApiClient
         // object of a failed request is moved to the first element of the response data. The `error`
         // key is checked first for a body that was not unwrapped, then the first element is used.
         $error = data_get($data, 'error');
-        $first = collect($data)->first();
+        $first = collect((array) $data)->first();
 
         if (! blank($error) && ! is_scalar($error)) {
             $data = $error;
@@ -1113,9 +1160,9 @@ class ApiClient
      *
      * This method checks whether the .env variable or config value for `GOOGLE_API_EXCEPTIONS=true`
      *
-     * @param  string  $method    The lowercase name of the method that calls this function (ex. `get`)
-     * @param  string  $url       The URL of the API call including the concatenated base URL and URI
-     * @param  object  $response  The HTTP response formatted with $this->parseApiResponse()
+     * @param  string       $method    The lowercase name of the method that calls this function (ex. `get`)
+     * @param  string       $url       The URL of the API call including the concatenated base URL and URI
+     * @param  ApiResponse  $response  The HTTP response formatted with $this->parseApiResponse()
      *
      * @throws BadRequestException
      * @throws ConflictException

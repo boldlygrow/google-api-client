@@ -381,3 +381,19 @@ it('returns an error response with the same properties as other responses from h
     expect($response->status->failed)->toBeTrue();
     expect($response->error->url)->toBe(DIRECTORY_URL . '/groups');
 });
+
+it('logs the number of records from every page when pagination finishes', function () {
+    Log::spy();
+    fakeGoogle([
+        'admin.googleapis.com/admin/directory/v1/groups*' => Http::sequence()
+            ->push(['groups' => [['id' => 'group1'], ['id' => 'group2']], 'nextPageToken' => 'page2'])
+            ->push(['groups' => [['id' => 'group3']]]),
+    ]);
+
+    ApiClient::get(url: DIRECTORY_URL . '/groups', scope: DIRECTORY_SCOPE);
+
+    Log::shouldHaveReceived('log')
+        ->withArgs(fn (string $log_level, string $message, array $context) => $context['event_type'] === 'google.api.get.process.pagination.finished'
+            && $context['count_records'] === 3)
+        ->once();
+});
