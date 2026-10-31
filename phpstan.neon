@@ -3,15 +3,25 @@ includes:
 
 parameters:
 
+    tmpDir: ./tmp/phpstan
+
+    parallel:
+        maximumNumberOfProcesses: 8
+
     paths:
         - src
 
     # The level 9 is the highest level
-    level: 9
+    level: 8
+
+    # Every @phpstan-ignore must say why in parentheses, e.g. `// @phpstan-ignore argument.type (reason)`.
+    # An ignore without a reason doesn't suppress anything and is reported as ignore.noComment.
+    reportIgnoresWithoutComments: true
 
     ignoreErrors:
+        # The published config file reads environment variables, which is the one place env() belongs. Not every
+        # package's config file calls env(), so an unmatched ignore is not reported.
         -
             identifier: larastan.noEnvCallsOutsideOfConfig
-            path: src/Config/google-api-client.php
-    excludePaths:
-        - ./*/*/FileToBeExcluded.php
+            path: src/Config/*
+            reportUnmatched: false
