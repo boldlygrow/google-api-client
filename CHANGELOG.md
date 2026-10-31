@@ -76,8 +76,9 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
 #### Audit Logging
 
 - **`boldlygrow/audit-log` replaces `provisionesta/audit`**
-    - The constraint is `^2.0 || ^3.0`. The logger class is `BoldlyGrow\AuditLog\AuditLog` instead of `Provisionesta\Audit\Log`, and the event types and log levels are unchanged.
+    - The constraint is `^2.0.1 || ^3.0`. The logger class is `BoldlyGrow\AuditLog\AuditLog` instead of `Provisionesta\Audit\Log`, and the event types and log levels are unchanged.
     - **Why:** `provisionesta/audit` is deprecated, and `boldlygrow/audit-log` is its direct replacement.
+    - **Why `2.0.1`:** audit-log 2.0.0 typed the `duration_ms` and `event_ms` parameters of `AuditLog::create()` as `?Carbon`, so an application that uses `Date::use(CarbonImmutable::class)` failed with a `TypeError` on every API call. 2.0.1 accepts any `CarbonInterface`.
     - **How:** If you call the audit logger directly, replace `Provisionesta\Audit\Log` with `BoldlyGrow\AuditLog\AuditLog`, and `Log::create()` with `AuditLog::create()`.
 
 #### Credential Resolution
