@@ -360,3 +360,8 @@ it('separates the reason from the heading in a connection array validation error
     expect(fn () => ApiToken::create(scope: 'https://www.googleapis.com/auth/cloud-platform', connection: ['key_path' => 123]))
         ->toThrow(ConfigurationException::class, 'Google API configuration validation error. (Reason) The key path field must be a string.');
 });
+
+it('validates the customer key that the config uses', function () {
+    expect(fn () => ApiToken::create(scope: 'https://www.googleapis.com/auth/admin.directory.user', connection: ['key_string' => serviceAccountJson(), 'customer' => ['C0tenant']]))
+        ->toThrow(ConfigurationException::class, 'Google API configuration validation error. (Reason) The customer field must be a string.');
+});

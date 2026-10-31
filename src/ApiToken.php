@@ -136,7 +136,7 @@ class ApiToken
         $validator = Validator::make(
             data: $connection_config,
             rules: [
-                'customer_id' => ['nullable', 'string'],
+                'customer' => ['nullable', 'string'],
                 'domain' => ['nullable', 'string'],
                 'key_path' => [
                     'string',

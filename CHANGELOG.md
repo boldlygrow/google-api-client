@@ -159,6 +159,7 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
     - **Why:** Applications that use `Date::use(CarbonImmutable::class)` failed with a `TypeError` on every API call, since `now()` returns a `CarbonImmutable`.
 - `ApiClient::handleException()` returns `data` (`null`) and `headers` (an empty array) with the `error` and `status` properties, so code that reads `$response->data` from an error response doesn't fail with an undefined property.
 - A connection array validation error has a space between the heading and `(Reason)`.
+- The `customer` connection value is validated as a string. The validation rule checked a `customer_id` key, which the config and `query_keys` don't use.
 - The docblock for `ApiClient::throwExceptionIfEnabled()` referred to `OKTA_API_EXCEPTIONS` instead of `GOOGLE_API_EXCEPTIONS`.
 
 ### Upgrade Steps
