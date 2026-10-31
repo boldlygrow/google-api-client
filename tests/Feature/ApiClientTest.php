@@ -397,3 +397,17 @@ it('logs the number of records from every page when pagination finishes', functi
             && $context['count_records'] === 3)
         ->once();
 });
+
+it('logs the number of records in a successful response', function () {
+    Log::spy();
+    fakeGoogle([
+        'admin.googleapis.com/admin/directory/v1/groups*' => Http::response(['groups' => [['id' => 'group1'], ['id' => 'group2']]]),
+    ]);
+
+    ApiClient::get(url: DIRECTORY_URL . '/groups', scope: DIRECTORY_SCOPE);
+
+    Log::shouldHaveReceived('log')
+        ->withArgs(fn (string $log_level, string $message, array $context) => $context['event_type'] === 'google.api.get.success'
+            && $context['count_records'] === 2)
+        ->once();
+});

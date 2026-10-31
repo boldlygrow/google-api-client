@@ -846,8 +846,9 @@ class ApiClient
             $message = 'Unknown Error';
         }
 
+        // The data is an object, which is not countable, so it is cast to an array to count the records.
         $count_records = null;
-        if ($response->status->ok && is_countable($response->data)) {
+        if ($response->status->ok && (is_object($response->data) || is_array($response->data))) {
             $count_records = count((array) $response->data);
         }
 
