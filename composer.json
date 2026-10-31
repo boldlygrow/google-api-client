@@ -29,8 +29,8 @@
         "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
         "larastan/larastan": "^2.9 || ^3.0",
         "laravel/pint": "^1.29",
-        "pestphp/pest": "^4.7",
-        "pestphp/pest-plugin-laravel": "^4.1"
+        "pestphp/pest": "^3.8 || ^4.7",
+        "pestphp/pest-plugin-laravel": "^3.2 || ^4.1"
     },
     "autoload": {
         "psr-4": {
@@ -44,7 +44,20 @@
     },
     "scripts": {
         "test": "pest",
-        "test:coverage": "pest --coverage"
+        "test:coverage": "pest --coverage",
+        "lint": "bin/test_code_style.sh",
+        "analyse": "bin/test_phpstan.sh",
+        "prerelease": [
+            "Composer\\Config::disableProcessTimeout",
+            "bin/test_prerelease.sh"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run the Pest test suite.",
+        "test:coverage": "Run the Pest test suite with code coverage.",
+        "lint": "Check code style with Laravel Pint.",
+        "analyse": "Run PHPStan (Larastan) at the level in phpstan.neon.",
+        "prerelease": "Run every check that CI runs: composer validate, Pint, PHPStan, Pest, and composer audit."
     },
     "extra": {
         "laravel": {

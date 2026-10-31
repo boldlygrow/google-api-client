@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  matrix:
+    name: Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      include: ${{ steps.matrix.outputs.include }}
+      latest: ${{ steps.matrix.outputs.latest }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # The PHP and Laravel versions come from composer.json, so this file is the same in every package.
+      - id: matrix
+        run: php bin/ci_matrix.php >> "$GITHUB_OUTPUT"
+
+  checks:
+    name: Checks (PHP ${{ fromJSON(needs.matrix.outputs.latest).php }})
+    needs: matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ fromJSON(needs.matrix.outputs.latest).php }}
+          coverage: none
+
+      - run: bin/test_composer.sh
+
+      - run: composer update --prefer-dist --no-interaction --no-progress
+
+      - run: bin/test_code_style.sh
+
+      - run: bin/test_phpstan.sh
+
+      - run: bin/dep_vuln.sh
+
+  tests:
+    name: Tests (PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }})
+    needs: matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.include) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: openssl, pdo_sqlite
+          coverage: none
+
+      # Orchestra Testbench requires one Laravel major, so requiring it installs that Laravel version.
+      - name: Install Laravel ${{ matrix.laravel }}
+        run: |
+          composer require --dev "orchestra/testbench:^${{ matrix.testbench }}.0" --no-update --no-interaction
+          composer update --prefer-dist --no-interaction --no-progress
+
+      - run: bin/test_unit.sh

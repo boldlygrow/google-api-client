@@ -1,0 +1,21 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Only the development dependencies, since the runtime constraints are a deliberate support policy.
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-type: development
+    groups:
+      composer-dev:
+        patterns: ["*"]
