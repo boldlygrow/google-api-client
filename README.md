@@ -6,7 +6,7 @@
 
 The Google API Client is an open source [Composer](https://getcomposer.org/) package for use in Laravel applications for connecting to Google for provisioning and deprovisioning of resources, particularly in Google Workspace (Admin SDK) and Google Cloud.
 
-Please use at your own risk and create merge requests for any bugs that you encounter.
+Please use at your own risk and create pull requests for any bugs that you encounter.
 
 ### Problem Statement
 
@@ -144,7 +144,7 @@ $response = ApiClient::delete(
 
 ### Issue Tracking and Bug Reports
 
-We do not maintain a roadmap of feature requests, however we invite you to contribute and we will gladly review your merge requests.
+We do not maintain a roadmap of feature requests, however we invite you to contribute and we will gladly review your pull requests.
 
 Please create an [issue](https://github.com/boldlygrow/google-api-client/issues) for bug reports.
 
@@ -169,12 +169,12 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) to learn more about how to contrib
 
 | Requirement | Version                     |
 |-------------|-----------------------------|
-| PHP         | `^8.2`                      |
-| Laravel     | `^11.0`, `^12.0`, `^13.0`   |
+| PHP         | `^8.2` (up to 8.5 tested)   |
+| Laravel     | `^12.0`, `^13.0`            |
 
 ### Upgrade Guide
 
-See the [changelog](https://github.com/boldlygrow/google-api-client/tree/main/changelog) for release notes.
+See the [changelog](CHANGELOG.md) for release notes. If you are upgrading from `provisionesta/google-api-client` (4.x), read the [5.0 release notes](CHANGELOG.md#500---2026-10-31) for the package rename, namespace change, supported Laravel versions, and the new credential types.
 
 Still using `glamstack/*`? This package is a replacement for `glamstack/google-auth-sdk`, `glamstack/google-workspace-sdk`, and `glamstack/google-cloud-sdk`, however has been fully refactored and requires re-implementation for all previous usage.
 
@@ -1198,6 +1198,8 @@ An exception is thrown for any 4xx or 5xx responses. All responses are automatic
 | 429  | `BoldlyGrow\Google\Exceptions\RateLimitException`          |
 | 500  | `BoldlyGrow\Google\Exceptions\ServerErrorException`        |
 | 503  | `BoldlyGrow\Google\Exceptions\ServiceUnavailableException` |
+| Other 4xx | `BoldlyGrow\Google\Exceptions\BadRequestException`      |
+| Other 5xx | `BoldlyGrow\Google\Exceptions\ServerErrorException`     |
 
 ### Exception Messages
 
@@ -1260,6 +1262,8 @@ If you do not want exceptions to be thrown, you can globally disable exceptions 
 GOOGLE_API_EXCEPTIONS=false
 ```
 
+If a page of paginated results fails while exceptions are disabled, pagination stops. The response has the `status` of the failed page and the records from the pages before it, so check `$response->status->successful` before you use the `data`.
+
 ## Log Examples
 
 This package uses the [boldlygrow/audit-log](https://github.com/boldlygrow/audit-log) package for standardized logs.
@@ -1273,10 +1277,16 @@ The `event_type` key should be used for any categorization and log searches.
 
 | Status Code | Event Type                                        | Log Level |
 |-------------|---------------------------------------------------|-----------|
-| N/A         | `google.api.validate.error`                       | CRITICAL  |
 | N/A         | `google.api.validate.error.array`                 | CRITICAL  |
 | N/A         | `google.api.validate.error.empty`                 | CRITICAL  |
+| N/A         | `google.api.validate.error.encoding`              | CRITICAL  |
+| N/A         | `google.api.validate.error.file`                  | CRITICAL  |
+| N/A         | `google.api.validate.error.key`                   | CRITICAL  |
+| N/A         | `google.api.validate.error.keys`                  | CRITICAL  |
+| N/A         | `google.api.validate.error.scope`                 | CRITICAL  |
+| N/A         | `google.api.validate.error.subject`               | CRITICAL  |
 | N/A         | `google.api.auth.error`                           | CRITICAL  |
+| N/A         | `google.api.auth.error.expired`                   | CRITICAL  |
 | N/A         | `google.api.auth.success`                         | DEBUG     |
 | N/A         | `google.api.get.process.pagination.started`       | DEBUG     |
 | N/A         | `google.api.get.process.pagination.finished`      | DEBUG     |
@@ -1290,12 +1300,17 @@ The `event_type` key should be used for any categorization and log searches.
 | 403         | `google.api.{method}.error.forbidden`             | ERROR     |
 | 404         | `google.api.{method}.warning.not-found`           | WARNING   |
 | 405         | `google.api.{method}.error.method-not-allowed`    | ERROR     |
-| 412         | `google.api.{method}.error.precondition-failed`   | DEBUG     |
-| 422         | `google.api.{method}.error.unprocessable`         | DEBUG     |
+| 409         | `google.api.{method}.error.conflict`              | ERROR     |
+| 412         | `google.api.{method}.error.precondition-failed`   | ERROR     |
+| 422         | `google.api.{method}.error.unprocessable`         | ERROR     |
 | 429         | `google.api.{method}.critical.rate-limit`         | CRITICAL  |
 | 500         | `google.api.{method}.critical.server-error`       | CRITICAL  |
 | 501         | `google.api.{method}.error.not-implemented`       | ERROR     |
 | 503         | `google.api.{method}.critical.server-unavailable` | CRITICAL  |
+| Other 2xx   | `google.api.{method}.success`                     | DEBUG     |
+| Other 4xx   | `google.api.{method}.error.client-error`          | ERROR     |
+| Other 5xx   | `google.api.{method}.critical.server-error`       | CRITICAL  |
+| Other       | `google.api.{method}.warning.unexpected-status`   | WARNING   |
 
 ### Successful Requests
 
