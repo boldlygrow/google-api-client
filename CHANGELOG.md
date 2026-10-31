@@ -51,6 +51,13 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
     - The audit log `errors.message` value contains the same reason.
     - **Why:** The reason was previously discarded, so a failed request showed only the method, status code, and URL.
 
+#### Audit Logging
+
+- **Configuration and credential errors have their own audit log event types**
+    - The new event types are `google.api.validate.error.encoding` (a base64 encoded `GOOGLE_APPLICATION_CREDENTIALS`), `google.api.validate.error.file` (a key file that isn't readable), `google.api.validate.error.key` (a `private_key` that OpenSSL can't parse), `google.api.validate.error.keys` (missing credential keys), `google.api.validate.error.subject` (a `subject_email` with a credential type that can't use it), and `google.api.validate.error.scope` (a scope that wasn't granted to gcloud credentials).
+    - Expired or revoked gcloud credentials are logged as `google.api.auth.error.expired`.
+    - **Why:** Each problem has a different fix. In 4.x, most of them failed with a PHP error before anything was logged.
+
 #### Static Analysis
 
 - **PHPStan types for API responses**
@@ -68,6 +75,7 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
 
 - **The package is renamed to `boldlygrow/google-api-client`**
     - The `glamstack/google-api-client` and `provisionesta/google-api-client` package names are kept as Composer `replace` aliases.
+    - The source repository moved from GitLab to [GitHub](https://github.com/boldlygrow/google-api-client).
     - **Why:** The project is consolidating under the maintainer's `BoldlyGrow` organization, alongside the related audit and API client packages.
 - **The namespace is `BoldlyGrow\Google`**
     - It was `Provisionesta\Google`.
@@ -106,6 +114,7 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
     - A base64 encoded `GOOGLE_APPLICATION_CREDENTIALS` value is named as the problem.
     - A JSON key that can't be parsed reports the JSON error and where the key came from.
     - A service account key without `client_email`, `private_key`, or `private_key_id` names the missing keys, instead of failing with an undefined property error.
+    - A credentials file with an unsupported `type` (ex. `external_account` for workload identity federation) names the type.
     - A `private_key` that OpenSSL can't parse is reported as a configuration error. Its newlines most often weren't escaped as `\n`.
     - A `key_path` that isn't a readable file throws a `ConfigurationException` with the path, truncated if it is too long to be a path.
 
@@ -152,6 +161,10 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
     - **Why:** Exception messages are written to logs and error trackers, where a private key must never appear.
 - **`get()` handles a response without a JSON body when exceptions are disabled**
     - In 4.x, an empty or HTML body (ex. a `404` or a `503` from a proxy) failed with a `TypeError` from `property_exists()` while checking for a `nextPageToken`.
+- **A failed token request throws an `AuthenticationException`**
+    - In 4.x, a token endpoint response without a JSON body (ex. an HTML error page from a proxy) failed with a `TypeError` from `property_exists()`. A response with an `error` but no `error_description` failed with an `Undefined property` error.
+    - The message uses the `error_description`, then the `error`, and then the HTTP status code.
+    - **Why:** Code that catches `AuthenticationException` around API calls didn't catch these failures.
 - **Request logs include the record count again**
     - 4.2 logged every request with a null `count_records` and `event_ms_per_record`, since the parsed `data` is an object, which is never countable. The pagination finished log had the same problem.
 - **`CarbonImmutable` timestamps work with the API client**
