@@ -76,9 +76,9 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
 #### Audit Logging
 
 - **`boldlygrow/audit-log` replaces `provisionesta/audit`**
-    - The constraint is `^2.0.1 || ^3.0`. The logger class is `BoldlyGrow\AuditLog\AuditLog` instead of `Provisionesta\Audit\Log`, and the event types and log levels are unchanged.
+    - The constraint is `^3.0`. See the [audit-log 3.0.0 release notes](https://github.com/boldlygrow/audit-log/blob/main/CHANGELOG.md#300---2026-10-31). The logger class is `BoldlyGrow\AuditLog\AuditLog` instead of `Provisionesta\Audit\Log`, and the event types and log levels are unchanged.
     - **Why:** `provisionesta/audit` is deprecated, and `boldlygrow/audit-log` is its direct replacement.
-    - **Why `2.0.1`:** audit-log 2.0.0 typed the `duration_ms` and `event_ms` parameters of `AuditLog::create()` as `?Carbon`, so an application that uses `Date::use(CarbonImmutable::class)` failed with a `TypeError` on every API call. 2.0.1 accepts any `CarbonInterface`.
+    - **Why `3.0`:** audit-log 3.0 drops Laravel 11 along with this release. audit-log 2.0.0 also typed the `duration_ms` and `event_ms` parameters of `AuditLog::create()` as `?Carbon`, so an application that uses `Date::use(CarbonImmutable::class)` failed with a `TypeError` on every API call. 3.0 accepts any `CarbonInterface`.
     - **How:** If you call the audit logger directly, replace `Provisionesta\Audit\Log` with `BoldlyGrow\AuditLog\AuditLog`, and `Log::create()` with `AuditLog::create()`.
 
 #### Credential Resolution
@@ -165,7 +165,8 @@ This release moves the package to the `BoldlyGrow` namespace, replaces the depre
 ### Upgrade Steps
 
 1. **Upgrade Laravel and PHP first.** Your application must run Laravel v12 or v13. Laravel v12 supports PHP v8.2 or newer, and Laravel v13 requires PHP v8.3 or newer. Applications on Laravel v8 through v11 can stay on `provisionesta/google-api-client:^4.0`.
-2. **Update the package.** Replace `provisionesta/google-api-client` with `"boldlygrow/google-api-client": "^5.0"` in your `composer.json`, and run `composer update boldlygrow/google-api-client`.
+2. **Update the package.** Replace `provisionesta/google-api-client` with `"boldlygrow/google-api-client": "^5.0"` in your `composer.json`. If it also requires `boldlygrow/audit-log`, change that to `"^3.0"`. Then run `composer update boldlygrow/google-api-client boldlygrow/audit-log`.
+    - If your application uses more than one of okta-api-client 6.0, gitlab-api-client 5.0, and google-api-client 5.0, upgrade them together. They all require audit-log 3.0, and Composer can install only one audit-log version.
 3. **Update the namespace.** Find and replace `Provisionesta\Google` with `BoldlyGrow\Google`. If you call the audit logger directly, replace `Provisionesta\Audit\Log` with `BoldlyGrow\AuditLog\AuditLog`, and `Log::create()` with `AuditLog::create()`.
 4. **Publish the config file again** with `php artisan vendor:publish --tag=google-api-client` to get the docblocks and the `key_string` key, and copy over any values that you customized.
 5. **Review your exception handling.** Every 4xx and 5xx response now throws an exception (see **Fixed**). If you disable exceptions, check the `status` of paginated responses.
