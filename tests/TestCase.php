@@ -50,9 +50,9 @@ abstract class TestCase extends Orchestra
         }
 
         foreach ($this->temporary_directories as $directory) {
-            foreach (glob($directory . '/{,.}*', GLOB_BRACE) ?: [] as $path) {
-                if (is_file($path)) {
-                    unlink($path);
+            foreach (array_diff(scandir($directory) ?: [], ['.', '..']) as $file) {
+                if (is_file($directory . '/' . $file)) {
+                    unlink($directory . '/' . $file);
                 }
             }
 
