@@ -1315,51 +1315,51 @@ The `event_type` key should be used for any categorization and log searches.
 #### GET Request Log
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiToken::sendAuthRequest Success {"event_type":"google.api.auth.success","method":"App\\Actions\\Connections\\Google\\ApiToken::sendAuthRequest"}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiToken::parseTokenResponse Success {"event_type":"google.api.auth.success","method":"BoldlyGrow\\Google\\ApiToken::parseTokenResponse"}
 
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Success {"event_type":"google.api.get.success","method":"App\\Actions\\Connections\\Google\\ApiClient::get","count_records":5,"event_ms":810,"event_ms_per_record":162,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Success {"event_type":"google.api.get.success","method":"BoldlyGrow\\Google\\ApiClient::get","count_records":5,"event_ms":810,"event_ms_per_record":162,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer"}}
 ```
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Success {"event_type":"google.api.get.success","method":"App\\Actions\\Connections\\Google\\ApiClient::get","count_records":29,"event_ms":334,"event_ms_per_record":11,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users/0a1b2c3d4e5f6g7?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Success {"event_type":"google.api.get.success","method":"BoldlyGrow\\Google\\ApiClient::get","count_records":29,"event_ms":334,"event_ms_per_record":11,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users/0a1b2c3d4e5f6g7?customer=my_customer"}}
 ```
 
 #### GET Paginated Request Log
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiToken::sendAuthRequest Success {"event_type":"google.api.auth.success","method":"App\\Actions\\Connections\\Google\\ApiToken::sendAuthRequest"}
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Success {"event_type":"google.api.get.success","method":"App\\Actions\\Connections\\Google\\ApiClient::get","count_records":100,"event_ms":966,"event_ms_per_record":9,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer"}}
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Paginated Results Process Started {"event_type":"google.api.get.process.pagination.started","method":"App\\Actions\\Connections\\Google\\ApiClient::get","metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users"}}
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"App\\Actions\\Connections\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":613,"event_ms_per_record":6,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"App\\Actions\\Connections\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":1352,"event_ms_per_record":13,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"App\\Actions\\Connections\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":2151,"event_ms_per_record":21,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"App\\Actions\\Connections\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":2835,"event_ms_per_record":28,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiToken::parseTokenResponse Success {"event_type":"google.api.auth.success","method":"BoldlyGrow\\Google\\ApiToken::parseTokenResponse"}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Success {"event_type":"google.api.get.success","method":"BoldlyGrow\\Google\\ApiClient::get","count_records":100,"event_ms":966,"event_ms_per_record":9,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Paginated Results Process Started {"event_type":"google.api.get.process.pagination.started","method":"BoldlyGrow\\Google\\ApiClient::get","metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"BoldlyGrow\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":613,"event_ms_per_record":6,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"BoldlyGrow\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":1352,"event_ms_per_record":13,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"BoldlyGrow\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":2151,"event_ms_per_record":21,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::getPaginatedResults Success {"event_type":"google.api.getPaginatedResults.success","method":"BoldlyGrow\\Google\\ApiClient::getPaginatedResults","count_records":100,"event_ms":2835,"event_ms_per_record":28,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&pageToken=REDACTED"}}
 ...
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Paginated Results Process Complete {"event_type":"google.api.get.process.pagination.finished","method":"App\\Actions\\Connections\\Google\\ApiClient::get","count_records":3820,"duration_ms":29423,"duration_ms_per_record":7,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::get Paginated Results Process Complete {"event_type":"google.api.get.process.pagination.finished","method":"BoldlyGrow\\Google\\ApiClient::get","count_records":3820,"duration_ms":29423,"duration_ms_per_record":7,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users"}}
 ```
 
 #### POST Request Log
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::post Success {"event_type":"google.api.post.success","method":"App\\Actions\\Connections\\Google\\ApiClient::post","count_records":5,"event_ms":1054,"event_ms_per_record":210,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::post Success {"event_type":"google.api.post.success","method":"BoldlyGrow\\Google\\ApiClient::post","count_records":5,"event_ms":1054,"event_ms_per_record":210,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups?customer=my_customer"}}
 ```
 
 #### PATCH Request Log
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::patch Success {"event_type":"google.api.patch.success","method":"App\\Actions\\Connections\\Google\\ApiClient::patch","count_records":6,"event_ms":775,"event_ms_per_record":128,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups/0a1b2c3d4e5f6g7?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::patch Success {"event_type":"google.api.patch.success","method":"BoldlyGrow\\Google\\ApiClient::patch","count_records":6,"event_ms":775,"event_ms_per_record":128,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups/0a1b2c3d4e5f6g7?customer=my_customer"}}
 ```
 
 #### PUT Success Log
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::put Success {"event_type":"google.api.put.success","method":"App\\Actions\\Connections\\Google\\ApiClient::put","count_records":6,"event_ms":623,"event_ms_per_record":103,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups/0a1b2c3d4e5f6g7?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::put Success {"event_type":"google.api.put.success","method":"BoldlyGrow\\Google\\ApiClient::put","count_records":6,"event_ms":623,"event_ms_per_record":103,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups/0a1b2c3d4e5f6g7?customer=my_customer"}}
 ```
 
 #### DELETE Success Log
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::delete Success {"event_type":"google.api.delete.success","method":"App\\Actions\\Connections\\Google\\ApiClient::delete","event_ms":584,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups/0a1b2c3d4e5f6g7?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.DEBUG: ApiClient::delete Success {"event_type":"google.api.delete.success","method":"BoldlyGrow\\Google\\ApiClient::delete","event_ms":584,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups/0a1b2c3d4e5f6g7?customer=my_customer"}}
 ```
 
 ### Errors
@@ -1367,7 +1367,7 @@ The `event_type` key should be used for any categorization and log searches.
 #### Authentication Scopes Missing Error
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiToken::sendAuthRequest Error {"event_type":"google.api.auth.error","method":"BoldlyGrow\\Google\\ApiToken::sendAuthRequest","errors":["Client is unauthorized to retrieve access tokens using this method, or client not authorized for any of the scopes requested."]}
+[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiToken::parseTokenResponse Error {"event_type":"google.api.auth.error","method":"BoldlyGrow\\Google\\ApiToken::parseTokenResponse","errors":["Client is unauthorized to retrieve access tokens using this method, or client not authorized for any of the scopes requested."]}
 ```
 
 #### Missing Customer ID Error
@@ -1394,13 +1394,13 @@ $groups = ApiClient::get(
 > See the [Missing Customer ID Error](#missing-customer-id-error) for initial troubleshooting.
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.WARNING: ApiClient::get Client Error {"event_type":"google.api.get.warning.bad-request","method":"App\\Actions\\Connections\\Google\\ApiClient::get","event_ms":468,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups"}}
+[YYYY-MM-DD HH:II:SS] local.WARNING: ApiClient::get Client Error {"event_type":"google.api.get.warning.bad-request","method":"BoldlyGrow\\Google\\ApiClient::get","event_ms":468,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/groups"}}
 ```
 
 #### 404 Not Found
 
 ```plain
-[YYYY-MM-DD HH:II:SS] local.WARNING: ApiClient::get Client Error {"event_type":"google.api.get.warning.not-found","method":"App\\Actions\\Connections\\Google\\ApiClient::get","event_ms":354,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users/user@example.com?customer=my_customer"}}
+[YYYY-MM-DD HH:II:SS] local.WARNING: ApiClient::get Client Error {"event_type":"google.api.get.warning.not-found","method":"BoldlyGrow\\Google\\ApiClient::get","event_ms":354,"metadata":{"url":"https://admin.googleapis.com/admin/directory/v1/users/user@example.com?customer=my_customer"}}
 ```
 
 #### 429 Rate Limit Exception
