@@ -17,6 +17,7 @@ use BoldlyGrow\Google\Exceptions\UnauthorizedException;
 use BoldlyGrow\Google\Exceptions\UnprocessableException;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -114,7 +115,9 @@ class ApiClient
             response: $response
         );
 
-        if (property_exists($request->object(), 'nextPageToken')) {
+        $next_page_token = self::getNextPageToken($request);
+
+        if ($next_page_token !== null) {
             AuditLog::create(
                 event_type: 'google.api.get.process.pagination.started',
                 level: 'debug',
@@ -124,15 +127,18 @@ class ApiClient
                 transaction: false
             );
 
-            $paginated_results = self::getPaginatedResults(
+            $paginated_response = self::getPaginatedResults(
                 connection: $connection,
                 url: $url,
                 scope: $scope,
-                query_params: array_merge($query_params, ['pageToken' => $request->object()->nextPageToken]),
+                query_params: array_merge($query_params, ['pageToken' => $next_page_token]),
                 records: (array) $response->data,
             );
 
-            $response->data = $paginated_results;
+            // A page that failed is only returned when exceptions are disabled. Its status replaces the status of the
+            // first page so that a caller that checks the `status` of the response knows the results are incomplete.
+            $response->data = $paginated_response->data;
+            $response->status = $paginated_response->status;
 
             $count_records = is_countable($response->data) ? count((array) $response->data) : null;
             $duration_ms_per_record = $count_records ? (int) ($event_ms->diffInMilliseconds() / $count_records) : null;
@@ -562,7 +568,9 @@ class ApiClient
      * @param  array   $query_params  Array of query params that were calculated in get() method
      * @param  array   $records       Array of records from first page of results from the get() method
      *
-     * @return object An array of the response objects for each page combined casted as an object.
+     * @return object The records from every page combined and cast as an object in `data`, and the `status` of the
+     *                last page that was requested. If a page fails while exceptions are disabled, pagination stops
+     *                and the status of the failed page is returned with the records from the pages before it.
      */
     protected static function getPaginatedResults(
         array $connection,
@@ -579,24 +587,53 @@ class ApiClient
                 ->get($url, $query_params);
 
             $response = self::parseApiResponse($request);
+            $paginated_url = $url . '?' . http_build_query($query_params);
 
             self::logResponse(
                 event_ms: $event_ms,
                 method: __METHOD__,
-                url: $url . '?' . http_build_query($query_params),
+                url: $paginated_url,
+                response: $response
+            );
+            self::throwExceptionIfEnabled(
+                method: 'get|paginated',
+                url: $paginated_url,
                 response: $response
             );
 
+            // The error body of a failed page is not a page of records, so it is not merged into the results.
+            if ($response->status->failed) {
+                break;
+            }
+
             $records = array_merge($records, (array) $response->data);
 
-            if (property_exists($request->object(), 'nextPageToken')) {
-                $query_params = array_merge($query_params, ['pageToken' => $request->object()->nextPageToken]);
-            } else {
-                $query_params = [];
-            }
-        } while ($query_params != []);
+            $next_page_token = self::getNextPageToken($request);
+            $query_params = array_merge($query_params, ['pageToken' => $next_page_token]);
+        } while ($next_page_token !== null);
 
-        return (object) $records;
+        return (object) [
+            'data' => (object) $records,
+            'status' => $response->status,
+        ];
+    }
+
+    /**
+     * Get the `nextPageToken` from a response body, or null if the response is the last page
+     *
+     * A response that does not have a JSON object body (ex. an empty body or an HTML error page from a proxy) does
+     * not have a next page.
+     *
+     * @link https://cloud.google.com/apis/design/design_patterns#list_pagination
+     *
+     * @param  Response  $response  The HTTP response for a page of results
+     */
+    private static function getNextPageToken(Response $response): ?string
+    {
+        $body = $response->object();
+        $next_page_token = is_object($body) ? ($body->nextPageToken ?? null) : null;
+
+        return is_string($next_page_token) && $next_page_token !== '' ? $next_page_token : null;
     }
 
     /**
@@ -725,7 +762,7 @@ class ApiClient
         object $response,
         ?CarbonInterface $event_ms = null
     ): void {
-        $log_type = [
+        $log_types = [
             200 => ['event_type' => 'success', 'level' => 'debug'],
             201 => ['event_type' => 'success', 'level' => 'debug'],
             202 => ['event_type' => 'success', 'level' => 'debug'],
@@ -735,6 +772,7 @@ class ApiClient
             403 => ['event_type' => 'error.forbidden', 'level' => 'error'],
             404 => ['event_type' => 'warning.not-found', 'level' => 'warning'],
             405 => ['event_type' => 'error.method-not-allowed', 'level' => 'error'],
+            409 => ['event_type' => 'error.conflict', 'level' => 'error'],
             412 => ['event_type' => 'error.precondition-failed', 'level' => 'error'],
             422 => ['event_type' => 'error.unprocessable', 'level' => 'error'],
             429 => ['event_type' => 'critical.rate-limit', 'level' => 'critical'],
@@ -742,6 +780,15 @@ class ApiClient
             501 => ['event_type' => 'error.not-implemented', 'level' => 'error'],
             503 => ['event_type' => 'critical.server-unavailable', 'level' => 'critical'],
         ];
+
+        // A status code that is not listed above (ex. a 502 or 504 from a gateway) is logged with the event type for
+        // its range instead of failing with an undefined array key before throwExceptionIfEnabled() is reached.
+        $log_type = $log_types[$response->status->code] ?? match (true) {
+            $response->status->successful => ['event_type' => 'success', 'level' => 'debug'],
+            $response->status->clientError => ['event_type' => 'error.client-error', 'level' => 'error'],
+            $response->status->serverError => ['event_type' => 'critical.server-error', 'level' => 'critical'],
+            default => ['event_type' => 'warning.unexpected-status', 'level' => 'warning'],
+        };
 
         $errors = [];
         if ($response->status->failed && ($error_message = self::parseErrorMessage($response)) !== null) {
@@ -777,9 +824,9 @@ class ApiClient
                 'google',
                 'api',
                 explode('::', $method)[1],
-                $log_type[$response->status->code]['event_type'],
+                $log_type['event_type'],
             ]),
-            level: $log_type[$response->status->code]['level'],
+            level: $log_type['level'],
             message: $message,
             metadata: [
                 'url' => $url,
@@ -854,6 +901,8 @@ class ApiClient
      *
      * @return object
      *                {
+     *                +"data": null
+     *                +"headers": []
      *                +"error": {
      *                +"code": "<string>"
      *                +"message": "<string>"
@@ -890,7 +939,11 @@ class ApiClient
             transaction: true
         );
 
+        // The empty data and headers keep the same properties as a response from parseApiResponse(), since this is
+        // returned by the same methods.
         return (object) [
+            'data' => null,
+            'headers' => [],
             'error' => (object) [
                 'code' => $exception->getCode(),
                 'message' => $exception->getMessage(),
@@ -1127,6 +1180,16 @@ class ApiClient
                     throw new ServerErrorException($message);
                 case 503:
                     throw new ServiceUnavailableException($message);
+                default:
+                    // A status code without its own exception (ex. a 410, 501, or 502) is treated as the x00 status
+                    // code of its range, as RFC 9110 15 requires for an unrecognized status code, so that every 4xx
+                    // and 5xx response throws an exception.
+                    if ($response->status->clientError) {
+                        throw new BadRequestException($message);
+                    }
+                    if ($response->status->serverError) {
+                        throw new ServerErrorException($message);
+                    }
             }
         }
     }

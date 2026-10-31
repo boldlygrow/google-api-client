@@ -9,6 +9,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+use JsonException;
 use stdClass;
 use Throwable;
 
@@ -94,6 +95,7 @@ class ApiToken
      *
      * @throws AuthenticationException
      * @throws ConfigurationException
+     * @throws JsonException           If a connection value or the scope is not valid UTF-8
      */
     public static function create(string $scope, array $connection = []): string
     {
@@ -158,7 +160,7 @@ class ApiToken
                 transaction: false
             );
 
-            throw new ConfigurationException(implode('', [
+            throw new ConfigurationException(implode(' ', [
                 'Google API configuration validation error.',
                 '(Reason) ' . $validator->messages()->first(),
             ]));
@@ -308,11 +310,11 @@ class ApiToken
             private_key: (string) $credentials->private_key
         );
 
-        $cache_checksum_token = 'google-api-token-' . md5((string) json_encode([
+        $cache_checksum_token = self::cacheKey([
             'scope' => $scope,
             'subject_email' => $subject_email,
             'private_key_id' => $credentials->private_key_id,
-        ]));
+        ]);
 
         return self::rememberToken(
             cache_key: $cache_checksum_token,
@@ -348,12 +350,12 @@ class ApiToken
         );
 
         // The refresh token is hashed so that the credential never becomes part of a cache key.
-        $cache_checksum_token = 'google-api-token-' . md5((string) json_encode([
+        $cache_checksum_token = self::cacheKey([
             'scope' => $scope,
             'type' => self::TYPE_AUTHORIZED_USER,
             'client_id' => $credentials->client_id,
             'refresh_token' => hash('sha256', (string) $credentials->refresh_token),
-        ]));
+        ]);
 
         return self::rememberToken(
             cache_key: $cache_checksum_token,
@@ -376,15 +378,29 @@ class ApiToken
     {
         self::validateSubjectEmailIsNotSet($connection, self::TYPE_METADATA_SERVER);
 
-        $cache_checksum_token = 'google-api-token-' . md5((string) json_encode([
+        $cache_checksum_token = self::cacheKey([
             'scope' => $scope,
             'type' => self::TYPE_METADATA_SERVER,
-        ]));
+        ]);
 
         return self::rememberToken(
             cache_key: $cache_checksum_token,
             callback: fn (): array => self::sendMetadataServerRequest(scope: $scope)
         );
+    }
+
+    /**
+     * Build the cache key for an access token from the values that identify its scope and credentials
+     *
+     * @param  array<string, mixed>  $values  The scope and the credential identifiers. Never the credential itself.
+     *
+     * @throws JsonException
+     */
+    private static function cacheKey(array $values): string
+    {
+        // JSON_THROW_ON_ERROR so that an encoding failure (ex. invalid UTF-8) throws instead of hashing an empty string
+        // into one cache key that is shared by every connection that fails to encode.
+        return 'google-api-token-' . md5(json_encode($values, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -419,10 +435,10 @@ class ApiToken
      */
     private static function createJwtHeader(): string
     {
-        return self::base64UrlEncode((string) json_encode([
+        return self::base64UrlEncode(json_encode([
             'alg' => self::AUTH_ALGORITHM,
             'typ' => self::AUTH_TYPE,
-        ]));
+        ], JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -452,14 +468,16 @@ class ApiToken
         string $scope,
         string $subject_email
     ): string {
-        return self::base64UrlEncode((string) json_encode([
+        // JSON_THROW_ON_ERROR so that a claim that can't be encoded (ex. invalid UTF-8) throws instead of sending a
+        // JWT with an empty claim set.
+        return self::base64UrlEncode(json_encode([
             'iss' => $client_email,
             'scope' => $scope,
             'aud' => self::AUTH_BASE_URL,
             'exp' => time() + 3600,
             'iat' => time(),
             'sub' => $subject_email,
-        ]));
+        ], JSON_THROW_ON_ERROR));
     }
 
     /**

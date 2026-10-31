@@ -3,6 +3,7 @@
 use BoldlyGrow\Google\ApiClient;
 use BoldlyGrow\Google\Exceptions\BadRequestException;
 use BoldlyGrow\Google\Exceptions\ConfigurationException;
+use BoldlyGrow\Google\Exceptions\ConflictException;
 use BoldlyGrow\Google\Exceptions\ForbiddenException;
 use BoldlyGrow\Google\Exceptions\MethodNotAllowedException;
 use BoldlyGrow\Google\Exceptions\NotFoundException;
@@ -12,7 +13,10 @@ use BoldlyGrow\Google\Exceptions\ServerErrorException;
 use BoldlyGrow\Google\Exceptions\ServiceUnavailableException;
 use BoldlyGrow\Google\Exceptions\UnauthorizedException;
 use BoldlyGrow\Google\Exceptions\UnprocessableException;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -281,4 +285,99 @@ it('logs the reason that Google returned for a failed request', function () {
         ->withArgs(fn (string $log_level, string $message, array $context) => $context['event_type'] === 'google.api.post.warning.bad-request'
             && $context['errors'] === ['message' => 'ALREADY_EXISTS Entity already exists.'])
         ->once();
+});
+
+it('throws a ConflictException for a 409 response', function () {
+    fakeGoogle([
+        'admin.googleapis.com/*' => Http::response(['error' => ['code' => 409, 'message' => 'Entity already exists.', 'status' => 'ALREADY_EXISTS']], 409),
+    ]);
+
+    expect(fn () => ApiClient::post(url: DIRECTORY_URL . '/groups', scope: DIRECTORY_SCOPE))
+        ->toThrow(ConflictException::class, 'POST 409 ' . DIRECTORY_URL . '/groups (Reason) ALREADY_EXISTS Entity already exists.');
+});
+
+it('throws the exception for the range of a 4xx or 5xx status code without its own exception', function (int $status, string $exception) {
+    fakeGoogle([
+        'admin.googleapis.com/*' => Http::response('', $status),
+    ]);
+
+    expect(fn () => ApiClient::delete(url: DIRECTORY_URL . '/groups/group1', scope: DIRECTORY_SCOPE))
+        ->toThrow($exception, 'DELETE ' . $status . ' ' . DIRECTORY_URL . '/groups/group1');
+})->with([
+    'gone' => [410, BadRequestException::class],
+    'not implemented' => [501, ServerErrorException::class],
+    'bad gateway' => [502, ServerErrorException::class],
+    'gateway timeout' => [504, ServerErrorException::class],
+]);
+
+it('logs a status code without its own event type with the event type for its range', function (int $status, string $event_type, string $level) {
+    config()->set('google-api-client.exceptions', false);
+    Log::spy();
+    fakeGoogle([
+        'admin.googleapis.com/*' => Http::response('', $status),
+    ]);
+
+    $response = ApiClient::delete(url: DIRECTORY_URL . '/groups/group1', scope: DIRECTORY_SCOPE);
+
+    expect($response->status->code)->toBe($status);
+    Log::shouldHaveReceived('log')
+        ->withArgs(fn (string $log_level, string $message, array $context) => $log_level === $level && $context['event_type'] === $event_type)
+        ->once();
+})->with([
+    'partial content' => [206, 'google.api.delete.success', 'debug'],
+    'not modified' => [304, 'google.api.delete.warning.unexpected-status', 'warning'],
+    'conflict' => [409, 'google.api.delete.error.conflict', 'error'],
+    'gone' => [410, 'google.api.delete.error.client-error', 'error'],
+    'bad gateway' => [502, 'google.api.delete.critical.server-error', 'critical'],
+]);
+
+it('returns a GET response without a JSON body when exceptions are disabled', function (int $status) {
+    config()->set('google-api-client.exceptions', false);
+    fakeGoogle([
+        'admin.googleapis.com/*' => Http::response('<html>Not Found</html>', $status, ['Content-Type' => 'text/html']),
+    ]);
+
+    $response = ApiClient::get(url: DIRECTORY_URL . '/groups/missing', scope: DIRECTORY_SCOPE);
+
+    expect($response->status->code)->toBe($status);
+})->with([
+    'not found' => [404],
+    'service unavailable' => [503],
+]);
+
+it('throws the exception for a page of paginated results that fails', function () {
+    fakeGoogle([
+        'admin.googleapis.com/admin/directory/v1/groups*' => Http::sequence()
+            ->push(['groups' => [['id' => 'group1']], 'nextPageToken' => 'page2'])
+            ->push(['error' => ['code' => 429, 'message' => 'Quota exceeded.', 'status' => 'RESOURCE_EXHAUSTED']], 429),
+    ]);
+
+    expect(fn () => ApiClient::get(url: DIRECTORY_URL . '/groups', scope: DIRECTORY_SCOPE))
+        ->toThrow(RateLimitException::class, 'GET|PAGINATED 429 ' . DIRECTORY_URL . '/groups?pageToken=page2 (Reason) RESOURCE_EXHAUSTED Quota exceeded.');
+});
+
+it('returns the status of a failed page and the records before it when exceptions are disabled', function () {
+    config()->set('google-api-client.exceptions', false);
+    fakeGoogle([
+        'admin.googleapis.com/admin/directory/v1/groups*' => Http::sequence()
+            ->push(['groups' => [['id' => 'group1']], 'nextPageToken' => 'page2'])
+            ->push(['error' => ['code' => 429, 'message' => 'Quota exceeded.', 'status' => 'RESOURCE_EXHAUSTED']], 429),
+    ]);
+
+    $response = ApiClient::get(url: DIRECTORY_URL . '/groups', scope: DIRECTORY_SCOPE);
+
+    expect($response->status->code)->toBe(429);
+    expect($response->status->failed)->toBeTrue();
+    expect(collect($response->data)->pluck('id')->all())->toBe(['group1']);
+});
+
+it('returns an error response with the same properties as other responses from handleException()', function () {
+    $exception = new RequestException(new Response(new GuzzleResponse(500)));
+
+    $response = ApiClient::handleException(exception: $exception, method: 'BoldlyGrow\Google\ApiClient::get', url: DIRECTORY_URL . '/groups');
+
+    expect($response->data)->toBeNull();
+    expect($response->headers)->toBe([]);
+    expect($response->status->failed)->toBeTrue();
+    expect($response->error->url)->toBe(DIRECTORY_URL . '/groups');
 });

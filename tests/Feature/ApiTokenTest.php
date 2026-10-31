@@ -344,3 +344,19 @@ it('lists every credential source that was checked when no credentials are found
     expect(fn () => ApiToken::create(scope: 'https://www.googleapis.com/auth/cloud-platform'))
         ->toThrow(ConfigurationException::class, '(Checked) the key_string and key_path connection parameters, the GOOGLE_APPLICATION_CREDENTIALS environment variable,');
 });
+
+it('does not share a cached access token between connections that cannot be JSON encoded', function () {
+    fakeGoogle();
+
+    expect(fn () => ApiToken::create(scope: 'https://www.googleapis.com/auth/cloud-platform', connection: ['key_string' => serviceAccountJson(), 'subject_email' => "admin\xB1@example.com"]))
+        ->toThrow(JsonException::class);
+    expect(fn () => ApiToken::create(scope: 'https://www.googleapis.com/auth/cloud-platform', connection: ['key_string' => serviceAccountJson(), 'subject_email' => "other\xB2@example.com"]))
+        ->toThrow(JsonException::class);
+
+    Http::assertNothingSent();
+});
+
+it('separates the reason from the heading in a connection array validation error', function () {
+    expect(fn () => ApiToken::create(scope: 'https://www.googleapis.com/auth/cloud-platform', connection: ['key_path' => 123]))
+        ->toThrow(ConfigurationException::class, 'Google API configuration validation error. (Reason) The key path field must be a string.');
+});
