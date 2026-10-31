@@ -60,7 +60,7 @@ Fix errors instead of adding them to a baseline. If an error can't be fixed, add
 
 Release notes live in the root `CHANGELOG.md`, newest release first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with two project-specific additions.
 
-In Claude Code, run `/changelog` (or `/changelog 5.1.0`) to draft the next entry from the commits since the last tag. The skill in `.claude/skills/changelog/` follows the rules below. Use the 5.0.0 entry as the example for a major release, and the 4.1.0 entry for a minor release.
+In Claude Code, run `/changelog` (or `/changelog 5.1.0`) to draft the next entry from the commits since the last tag. The skill in `.claude/skills/changelog/` follows the rules below. Use the 5.0.0 entry as the example for a major release, and the 4.2.0 entry for a minor release.
 
 #### Format
 
