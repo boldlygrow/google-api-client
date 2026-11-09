@@ -438,6 +438,39 @@ Here are some common ones that you will likely use to get you started:
 
 You can see a full list of scopes in the [Google documentation](https://developers.google.com/identity/protocols/oauth2/scopes).
 
+### Signing Without a JSON Key
+
+A service account doesn't need a JSON key if something else can sign for it. The IAM Credentials API can sign a JWT with a key that Google holds and rotates, so no private key is ever downloaded or stored. This also works with domain-wide delegation, which the metadata server can't do on its own.
+
+To use it, add a `jwt_signer` and the service account's `client_email` to the connection array. The signer is a callable that receives the JWT claims as an array and returns the signed JWT as a string. The example below uses the attached service account's identity to sign for itself:
+
+```php
+use Illuminate\Support\Facades\Http;
+
+$connection = [
+    'customer' => 'C01234567',
+    'subject_email' => 'admin@example.com',
+    'client_email' => $service_account_email,
+    'jwt_signer' => function (array $claims) use ($service_account_email, $access_token): string {
+        return Http::withToken($access_token)
+            ->post(
+                'https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/' . $service_account_email . ':signJwt',
+                ['payload' => json_encode($claims)]
+            )
+            ->throw()
+            ->json('signedJwt');
+    },
+];
+```
+
+The identity that calls `signJwt` needs the `iam.serviceAccounts.signJwt` permission on the service account, even when it's signing for itself. The `Service Account Token Creator` role includes this permission.
+
+- The signer is only called when the client needs a new access token. A cached token doesn't call it again.
+- The cached token is looked up by the scope, the `subject_email`, and the `client_email`.
+- A signer only works in a connection array, because a callable can't be stored in the configuration file.
+- When a connection has a `jwt_signer`, the client doesn't read `key_string`, `key_path`, or `GOOGLE_APPLICATION_CREDENTIALS`.
+- If a signer returns anything other than a non-empty string, the client throws a `ConfigurationException` and doesn't request a token.
+
 ### Connection Arrays
 
 The variables that you define in your `.env` file are used by default unless you set the connection argument with an array containing the required arguments.
