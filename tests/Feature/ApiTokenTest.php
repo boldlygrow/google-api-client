@@ -365,3 +365,103 @@ it('validates the customer key that the config uses', function () {
     expect(fn () => ApiToken::create(scope: 'https://www.googleapis.com/auth/admin.directory.user', connection: ['key_string' => serviceAccountJson(), 'customer' => ['C0tenant']]))
         ->toThrow(ConfigurationException::class, 'Google API configuration validation error. (Reason) The customer field must be a string.');
 });
+
+it('exchanges a JWT from the jwt_signer and impersonates the subject_email', function () {
+    fakeGoogle();
+    $signed_claims = null;
+
+    $token = ApiToken::create('https://www.googleapis.com/auth/admin.directory.user.readonly', [
+        'client_email' => 'tenant@example.iam.gserviceaccount.com',
+        'subject_email' => 'admin@example.com',
+        'jwt_signer' => function (array $claims) use (&$signed_claims): string {
+            $signed_claims = $claims;
+
+            return 'header.claims.signature';
+        },
+    ]);
+
+    /** @var Request $token_request */
+    [$token_request] = Http::recorded()->sole();
+    expect($token)->toBe('test-access-token');
+    expect($token_request['assertion'])->toBe('header.claims.signature');
+    expect($token_request['grant_type'])->toBe('urn:ietf:params:oauth:grant-type:jwt-bearer');
+    expect($signed_claims)->toMatchArray([
+        'iss' => 'tenant@example.iam.gserviceaccount.com',
+        'sub' => 'admin@example.com',
+        'scope' => 'https://www.googleapis.com/auth/admin.directory.user.readonly',
+        'aud' => 'https://oauth2.googleapis.com/token',
+    ]);
+});
+
+it('uses the jwt_signer instead of a JSON key when a connection has both', function () {
+    fakeGoogle();
+
+    ApiToken::create('scope', [
+        'key_string' => serviceAccountJson(),
+        'client_email' => 'tenant@example.iam.gserviceaccount.com',
+        'jwt_signer' => fn (array $claims): string => 'from-the-signer',
+    ]);
+
+    [$token_request] = Http::recorded()->sole();
+    expect($token_request['assertion'])->toBe('from-the-signer');
+});
+
+it('only calls the jwt_signer when a token is requested', function () {
+    fakeGoogle();
+    $calls = 0;
+    $connection = [
+        'client_email' => 'tenant@example.iam.gserviceaccount.com',
+        'subject_email' => 'admin@example.com',
+        'jwt_signer' => function () use (&$calls): string {
+            $calls++;
+
+            return 'header.claims.signature';
+        },
+    ];
+
+    ApiToken::create('scope', $connection);
+    ApiToken::create('scope', $connection);
+
+    expect($calls)->toBe(1);
+});
+
+it('requests a new token for a different subject_email with the jwt_signer', function () {
+    fakeGoogle();
+    $connection = [
+        'client_email' => 'tenant@example.iam.gserviceaccount.com',
+        'subject_email' => 'admin@example.com',
+        'jwt_signer' => fn (): string => 'header.claims.signature',
+    ];
+
+    ApiToken::create('scope', $connection);
+    ApiToken::create('scope', [...$connection, 'subject_email' => 'other@example.com']);
+
+    Http::assertSentCount(2);
+});
+
+it('requires a client_email with the jwt_signer', function () {
+    Http::fake();
+
+    expect(fn () => ApiToken::create('scope', ['jwt_signer' => fn (): string => 'jwt']))
+        ->toThrow(ConfigurationException::class, 'client_email');
+
+    Http::assertNothingSent();
+});
+
+it('rejects a jwt_signer that is not callable', function () {
+    Http::fake();
+
+    expect(fn () => ApiToken::create('scope', ['client_email' => 'a@b.c', 'jwt_signer' => 'not-a-callable']))
+        ->toThrow(ConfigurationException::class, 'must be a callable');
+
+    Http::assertNothingSent();
+});
+
+it('throws when the jwt_signer does not return a signed JWT', function (mixed $jwt) {
+    Http::fake();
+
+    expect(fn () => ApiToken::create('scope', ['client_email' => 'a@b.c', 'jwt_signer' => fn (): mixed => $jwt]))
+        ->toThrow(ConfigurationException::class, 'did not return a signed JWT');
+
+    Http::assertNothingSent();
+})->with([[''], [null], [false]]);

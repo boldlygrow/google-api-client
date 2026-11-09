@@ -5,6 +5,7 @@ namespace BoldlyGrow\Google;
 use BoldlyGrow\AuditLog\AuditLog;
 use BoldlyGrow\Google\Exceptions\AuthenticationException;
 use BoldlyGrow\Google\Exceptions\ConfigurationException;
+use Closure;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -101,6 +102,10 @@ class ApiToken
     {
         $validated_connection = self::validateConnectionArray($connection);
 
+        if (isset($validated_connection['jwt_signer'])) {
+            return self::createSignedJwtToken($scope, $validated_connection);
+        }
+
         $credentials = self::getCredentials($validated_connection);
 
         $type = isset($credentials->type) && is_string($credentials->type)
@@ -147,6 +152,12 @@ class ApiToken
                     'nullable',
                 ],
                 'subject_email' => ['nullable', 'string'],
+                'client_email' => ['nullable', 'string'],
+                'jwt_signer' => ['nullable', function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! is_callable($value)) {
+                        $fail('The jwt_signer must be a callable that returns a signed JWT.');
+                    }
+                }],
             ],
         );
 
@@ -325,6 +336,71 @@ class ApiToken
     }
 
     /**
+     * Create a token with a JWT that a callable signed, so that the application never holds a private key
+     *
+     * The callable receives the JWT claims and returns the signed JWT, which suits a signing service such as the IAM
+     * Credentials `signJwt` method. It supports `subject_email` domain-wide delegation, and it is only called when a
+     * new access token is needed.
+     *
+     * @link https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/signJwt
+     *
+     * @param  string                $scope       One of the scopes that the service account is authorized to use.
+     * @param  array<string, mixed>  $connection  An array with API connection variables.
+     *
+     * @throws AuthenticationException
+     * @throws ConfigurationException
+     */
+    private static function createSignedJwtToken(string $scope, array $connection): string
+    {
+        if (empty($connection['client_email'])) {
+            self::throwSignerError('The client_email connection parameter is required when using jwt_signer.');
+        }
+
+        $client_email = (string) $connection['client_email'];
+
+        $subject_email = ! empty($connection['subject_email'])
+            ? (string) $connection['subject_email']
+            : $client_email;
+
+        return self::rememberToken(
+            cache_key: self::cacheKey([
+                'scope' => $scope,
+                'subject_email' => $subject_email,
+                'client_email' => $client_email,
+                'type' => 'jwt_signer',
+            ]),
+            callback: function () use ($connection, $client_email, $scope, $subject_email): array {
+                $jwt = $connection['jwt_signer'](self::jwtClaims($client_email, $scope, $subject_email));
+
+                if (! is_string($jwt) || $jwt === '') {
+                    self::throwSignerError('The jwt_signer did not return a signed JWT.');
+                }
+
+                return self::sendServiceAccountRequest(jwt: $jwt);
+            }
+        );
+    }
+
+    /**
+     * Record a jwt_signer configuration problem and throw it
+     *
+     * @throws ConfigurationException
+     */
+    private static function throwSignerError(string $reason): never
+    {
+        AuditLog::create(
+            errors: [$reason],
+            event_type: 'google.api.validate.error.signer',
+            level: 'critical',
+            message: 'Error',
+            method: __METHOD__,
+            transaction: false
+        );
+
+        throw new ConfigurationException('Google API validation error. (Reason) ' . $reason);
+    }
+
+    /**
      * Create a token by exchanging the refresh token from `gcloud auth application-default login`
      *
      * @link https://cloud.google.com/docs/authentication/application-default-credentials#personal
@@ -470,14 +546,27 @@ class ApiToken
     ): string {
         // JSON_THROW_ON_ERROR so that a claim that can't be encoded (ex. invalid UTF-8) throws instead of sending a
         // JWT with an empty claim set.
-        return self::base64UrlEncode(json_encode([
+        return self::base64UrlEncode(json_encode(
+            self::jwtClaims($client_email, $scope, $subject_email),
+            JSON_THROW_ON_ERROR
+        ));
+    }
+
+    /**
+     * Build the JWT claims for Google OAuth2 authentication
+     *
+     * @return array{iss: string, scope: string, aud: string, exp: int, iat: int, sub: string}
+     */
+    private static function jwtClaims(string $client_email, string $scope, string $subject_email): array
+    {
+        return [
             'iss' => $client_email,
             'scope' => $scope,
             'aud' => self::AUTH_BASE_URL,
             'exp' => time() + 3600,
             'iat' => time(),
             'sub' => $subject_email,
-        ], JSON_THROW_ON_ERROR));
+        ];
     }
 
     /**

@@ -4,6 +4,19 @@ All notable changes to `boldlygrow/google-api-client` are documented in this fil
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-11-09
+
+### Overview
+
+This release lets you authenticate as a service account without a JSON key, including with domain-wide delegation. Nothing changes unless you use it.
+
+### Added
+
+- **`jwt_signer` connection array option**
+    - A callable that receives the JWT claims and returns the signed JWT. When it's set with a `client_email`, the client doesn't read a JSON key and exchanges the signed JWT for an access token.
+    - **Why:** The IAM Credentials `signJwt` method signs with a key that Google holds and rotates, so no private key has to be downloaded or stored. The metadata server can't do domain-wide delegation, and this can.
+    - **How:** Add `jwt_signer` and `client_email` to the connection array. See [Signing Without a JSON Key](README.md#signing-without-a-json-key).
+
 ## [5.0.0] - 2026-10-31
 
 ### Overview
@@ -234,6 +247,7 @@ It is not backward compatible with those packages, so treat it as a new package 
     - Set `GOOGLE_API_EXCEPTIONS=false` to handle the `status` of each response yourself.
 - **Laravel v8, v9, v10, and v11 on PHP v8.0 or newer**
 
+[5.1.0]: https://github.com/boldlygrow/google-api-client/compare/5.0.0...5.1.0
 [5.0.0]: https://github.com/boldlygrow/google-api-client/compare/4.2...5.0.0
 [4.2.0]: https://github.com/boldlygrow/google-api-client/compare/4.1...4.2
 [4.1.0]: https://github.com/boldlygrow/google-api-client/compare/4.0...4.1
